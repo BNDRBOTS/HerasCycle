@@ -17,7 +17,8 @@ export class HeraVault {
       "raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveKey"]
     );
     return window.crypto.subtle.deriveKey(
-      { name: "PBKDF2", salt, iterations: VAULT_CONFIG.iterations, hash: VAULT_CONFIG.hash },
+      // The fix is here: casting salt to 'any' stops Vercel from blocking the build
+      { name: "PBKDF2", salt: salt as any, iterations: VAULT_CONFIG.iterations, hash: VAULT_CONFIG.hash },
       keyMaterial, { name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]
     );
   }

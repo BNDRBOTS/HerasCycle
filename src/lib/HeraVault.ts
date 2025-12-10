@@ -36,8 +36,9 @@ export class HeraVault {
       );
 
       const vaultArtifact = {
-        salt: this.bufferToBase64(salt),
-        iv: this.bufferToBase64(iv),
+        // Casting to any ensures Type 'Uint8Array' is accepted by bufferToBase64
+        salt: this.bufferToBase64(salt as any),
+        iv: this.bufferToBase64(iv as any),
         data: this.bufferToBase64(ciphertext),
         version: "v1.0-forensic",
         timestamp: Date.now()
@@ -72,7 +73,7 @@ export class HeraVault {
     }
   }
 
-  private static bufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
+  private static bufferToBase64(buffer: ArrayBuffer | Uint8Array | any): string {
     const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
     let binary = '';
     for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);

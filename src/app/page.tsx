@@ -9,47 +9,239 @@ import React, {
   useMemo
 } from 'react';
 import { 
+  Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ComposedChart, Bar, Cell, Tooltip 
+} from 'recharts';
+import { 
   Calendar as CalendarIcon, Activity, ChevronLeft, 
   ChevronRight, Droplet, Lock, Settings, Check, 
   Sparkles, Save, Download, Upload, Home, HelpCircle, 
   Minus, Plus, X, User, ChevronDown, ChevronUp, BrainCircuit, ShieldAlert,
-  Loader2, Wind
+  Loader2
 } from 'lucide-react';
 
-// --- IMPORT ARCHITECTURE ---
-import { AppState, CycleDay, UserProfile, Theme, Unit, FlowIntensity, MucusType, CervixPosition, LHResult } from '@/lib/types';
-import { HeraVault } from '@/lib/HeraVault';
-import { HeraEngine, ForensicOutput } from '@/lib/HeraLAS';
-import { DEFAULT_STATE, appReducer } from '@/lib/store';
-import { getLocalISODate, formatDate } from '@/lib/utils';
-
-// --- IMPORT COMPONENTS ---
-import { AmbientBreather } from '@/components/AmbientBreather';
-import { BiometricChart } from '@/components/BiometricChart';
-import { Card, LogCard, HighQualityLogo } from '@/components/ui/Primitives';
-
 /**
- * HERA CYCLE - v100.8 (Sovereign & Architecturally Compliant)
- * - CORE: Strictly uses src/lib/types.ts and engines.
- * - EXTENSION: Uses 'HERA_EXT_CONFIG' in localStorage to handle API Key, AI Active, 
- * and Liability flags without modifying the frozen 'UserProfile' type.
- * - FEATURE: Real AI Fetch, Backup Restore, Liability Waivers, Hardened FAQ.
+ * HERA CYCLE - v100.6 (Sovereign Edition - Surface Enforcement)
+ * - CONTENT: Hardened FAQ language (Sovereignty, Liability, Encryption).
+ * - VISUALS: Standardized ShieldAlert usage.
+ * - LOGIC: Preserved from v100.5.
  */
 
-// --- EXTENDED CONFIG MODEL (Local Bridge) ---
-interface ExtConfig {
-  aiActive: boolean;
-  apiKey: string;
-  liabilityAccepted: boolean;
-}
-const DEFAULT_EXT: ExtConfig = { aiActive: false, apiKey: '', liabilityAccepted: false };
+// --- 1. DOMAIN MODELS ---
 
-// --- UI HELPERS ---
+type Theme = 'blush' | 'serenity' | 'nature';
+type Unit = 'C' | 'F';
+type Language = 'en' | 'es' | 'fr';
+type FlowIntensity = 'none' | 'spotting' | 'light' | 'medium' | 'heavy';
+type MucusType = 'none' | 'dry' | 'sticky' | 'creamy' | 'eggwhite' | 'watery';
+
+interface CycleDay {
+  date: string;
+  temperature: number | null;
+  mucus: MucusType;
+  flow: FlowIntensity;
+  notes: string;
+}
+
+interface UserProfile {
+  name: string;
+  avatar: string | null;
+  theme: Theme;
+  unit: Unit;
+  lang: Language;
+  liabilityAccepted: boolean;
+  aiActive: boolean;
+  apiKey?: string;
+  aiProvider?: 'openai' | 'gemini' | 'unknown';
+  avgCycleLength: number; 
+  avgLutealLength: number; 
+}
+
+interface AppState {
+  profile: UserProfile;
+  cycleData: CycleDay[];
+  lastSynced: number;
+  unsavedChanges: boolean;
+}
+
+type Action = 
+  | { type: 'LOAD_STATE'; payload: AppState }
+  | { type: 'UPDATE_PROFILE'; payload: Partial<UserProfile> }
+  | { type: 'UPDATE_CYCLE_DAY'; payload: CycleDay }
+  | { type: 'RESET_APP' }
+  | { type: 'MARK_SAVED' };
+
+// --- 2. SECURITY ENGINE (STRICT) ---
+
+const VAULT_CONFIG = {
+  algo: 'AES-GCM',
+  length: 256,
+  hash: 'SHA-256',
+  iterations: 600000, 
+  saltLen: 16,
+  ivLen: 12
+};
+
+class HeraSecurity {
+  private static bufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
+    const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+    return window.btoa(binary);
+  }
+
+  private static base64ToBuffer(base64: string): ArrayBuffer {
+    const binary_string = window.atob(base64);
+    const len = binary_string.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) bytes[i] = binary_string.charCodeAt(i);
+    return bytes.buffer;
+  }
+
+  private static async deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey> {
+    const enc = new TextEncoder();
+    const keyMaterial = await window.crypto.subtle.importKey(
+      "raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveKey"]
+    );
+    return window.crypto.subtle.deriveKey(
+      // @ts-ignore
+      { name: "PBKDF2", salt: salt, iterations: VAULT_CONFIG.iterations, hash: VAULT_CONFIG.hash },
+      keyMaterial, { name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]
+    );
+  }
+
+  public static async lock(data: AppState, password: string): Promise<string> {
+    if (!password || password.trim().length === 0) throw new Error("Invalid Password");
+
+    const salt = window.crypto.getRandomValues(new Uint8Array(VAULT_CONFIG.saltLen));
+    const iv = window.crypto.getRandomValues(new Uint8Array(VAULT_CONFIG.ivLen));
+    const key = await this.deriveKey(password, salt);
+    
+    // 1. Generate Auth Hash (Key Verification)
+    const exportedKey = await window.crypto.subtle.exportKey("raw", key);
+    const authHashBuffer = await window.crypto.subtle.digest("SHA-256", exportedKey);
+    
+    // 2. Encrypt Content
+    const enc = new TextEncoder();
+    const encodedData = enc.encode(JSON.stringify(data));
+    const ciphertext = await window.crypto.subtle.encrypt(
+      // @ts-ignore
+      { name: "AES-GCM", iv: iv }, key, encodedData
+    );
+
+    return JSON.stringify({
+      salt: this.bufferToBase64(salt),
+      iv: this.bufferToBase64(iv),
+      authHash: this.bufferToBase64(authHashBuffer),
+      data: this.bufferToBase64(ciphertext),
+      version: "v100-platinum"
+    });
+  }
+
+  public static async unlock(vaultStr: string, password: string): Promise<AppState> {
+    const vault = JSON.parse(vaultStr);
+    const salt = new Uint8Array(this.base64ToBuffer(vault.salt));
+    const iv = new Uint8Array(this.base64ToBuffer(vault.iv));
+    const data = this.base64ToBuffer(vault.data);
+    
+    const key = await this.deriveKey(password, salt);
+
+    // Strict Key Verification
+    const exportedKey = await window.crypto.subtle.exportKey("raw", key);
+    const authHashBuffer = await window.crypto.subtle.digest("SHA-256", exportedKey);
+    const computedHash = this.bufferToBase64(authHashBuffer);
+
+    if (computedHash !== vault.authHash) {
+      throw new Error("INVALID_CREDENTIALS");
+    }
+
+    try {
+      const decrypted = await window.crypto.subtle.decrypt(
+        // @ts-ignore
+        { name: "AES-GCM", iv: iv }, key, data
+      );
+      const dec = new TextDecoder();
+      return JSON.parse(dec.decode(decrypted));
+    } catch (e) {
+      throw new Error("DECRYPTION_FAILED");
+    }
+  }
+}
+
+// --- 3. CYCLE PREDICTION ENGINE ---
+
+const CycleLogic = {
+  analyzeHistory: (data: CycleDay[]) => {
+    const sorted = [...data].sort((a,b) => a.date.localeCompare(b.date));
+    const periods = sorted.filter(d => d.flow === 'medium' || d.flow === 'heavy');
+    const starts: string[] = [];
+    let lastDate = 0;
+    periods.forEach(p => {
+      const time = new Date(p.date).getTime();
+      if (time - lastDate > 86400000 * 10) starts.push(p.date);
+      lastDate = time;
+    });
+    
+    const lengths: number[] = [];
+    for(let i = 0; i < starts.length - 1; i++) {
+      const diff = (new Date(starts[i+1]).getTime() - new Date(starts[i]).getTime()) / 86400000;
+      if (diff > 20 && diff < 45) lengths.push(diff);
+    }
+
+    const avgLength = lengths.length > 0 
+      ? Math.round(lengths.reduce((a,b) => a+b, 0) / lengths.length) 
+      : 28;
+
+    return { starts, avgLength, lastStart: starts[starts.length - 1] };
+  },
+
+  predict: (lastStart: string, avgLength: number) => {
+    if (!lastStart) return { nextPeriod: null, ovulation: null, fertileWindow: [] };
+    
+    const start = new Date(lastStart);
+    const nextPeriodDate = new Date(start);
+    nextPeriodDate.setDate(start.getDate() + avgLength);
+    
+    const ovulationDate = new Date(nextPeriodDate);
+    ovulationDate.setDate(nextPeriodDate.getDate() - 14);
+
+    const fertileWindow = [];
+    for(let i=5; i>=0; i--) {
+        const d = new Date(ovulationDate);
+        d.setDate(ovulationDate.getDate() - i);
+        fertileWindow.push(d.toISOString().split('T')[0]);
+    }
+    const d = new Date(ovulationDate);
+    d.setDate(ovulationDate.getDate() + 1);
+    fertileWindow.push(d.toISOString().split('T')[0]);
+
+    return {
+      nextPeriod: nextPeriodDate.toISOString().split('T')[0],
+      ovulation: ovulationDate.toISOString().split('T')[0],
+      fertileWindow
+    };
+  }
+};
+
+// --- 4. CONFIG & HELPERS ---
+
+const DEFAULT_STATE: AppState = {
+  profile: { 
+    name: 'User', avatar: null, theme: 'blush', unit: 'C', lang: 'en', 
+    liabilityAccepted: false, aiActive: false, aiProvider: 'unknown',
+    avgCycleLength: 28, avgLutealLength: 14 
+  },
+  cycleData: [],
+  lastSynced: Date.now(),
+  unsavedChanges: false
+};
+
 const THEMES = {
   blush: { 
     primary: "from-rose-500 to-rose-400", 
     bg: "bg-rose-50", 
     accent: "text-rose-600",
+    card: "bg-white border-rose-100",
+    chart: "#e11d48",
     active: "bg-rose-600 text-white",
     logBtn: "bg-rose-600 shadow-rose-200"
   },
@@ -57,6 +249,8 @@ const THEMES = {
     primary: "from-indigo-500 to-indigo-400", 
     bg: "bg-indigo-50", 
     accent: "text-indigo-600",
+    card: "bg-white border-indigo-100",
+    chart: "#4f46e5",
     active: "bg-indigo-600 text-white",
     logBtn: "bg-indigo-600 shadow-indigo-200"
   },
@@ -64,6 +258,8 @@ const THEMES = {
     primary: "from-emerald-500 to-emerald-400", 
     bg: "bg-emerald-50", 
     accent: "text-emerald-600",
+    card: "bg-white border-emerald-100",
+    chart: "#059669", 
     active: "bg-emerald-600 text-white",
     logBtn: "bg-emerald-600 shadow-emerald-200"
   }
@@ -82,6 +278,74 @@ const DICTIONARY = {
   }
 };
 
+const getLocalISODate = (d: Date = new Date()) => {
+  const offset = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - offset).toISOString().split('T')[0];
+};
+
+const addDays = (dateStr: string, days: number): string => {
+  const d = new Date(dateStr);
+  const local = new Date(d.valueOf() + d.getTimezoneOffset() * 60000);
+  local.setDate(local.getDate() + days);
+  return getLocalISODate(local);
+};
+
+const formatDate = (dateStr: string) => 
+  new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', weekday: 'short' }).format(new Date(dateStr + 'T12:00:00'));
+
+const processImageUpload = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        const scale = Math.min(100 / img.width, 100 / img.height);
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.7));
+      };
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
+
+const appReducer = (state: AppState, action: Action): AppState => {
+  switch (action.type) {
+    case 'LOAD_STATE': return { ...action.payload, unsavedChanges: false };
+    case 'UPDATE_PROFILE': 
+      return { ...state, profile: { ...state.profile, ...action.payload }, unsavedChanges: true };
+    case 'UPDATE_CYCLE_DAY': {
+      const existingIndex = state.cycleData.findIndex(d => d.date === action.payload.date);
+      const newData = [...state.cycleData];
+      if (existingIndex >= 0) newData[existingIndex] = action.payload;
+      else newData.push(action.payload);
+      return { ...state, cycleData: newData, unsavedChanges: true };
+    }
+    case 'RESET_APP': return DEFAULT_STATE;
+    case 'MARK_SAVED': return { ...state, unsavedChanges: false, lastSynced: Date.now() };
+    default: return state;
+  }
+};
+
+// --- 5. UI COMPONENTS ---
+
+const Card = ({ children, className = "" }: any) => (
+  <div className={`bg-white rounded-2xl p-5 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.08)] border border-slate-100 ${className}`}>{children}</div>
+);
+
+const LogCard = ({ title, children }: any) => (
+  <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 mb-4">
+    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">{title}</h3>
+    {children}
+  </div>
+);
+
 const FAQItem = ({ q, a, important = false }: any) => {
     const [isOpen, setIsOpen] = useState(false);
     return (
@@ -97,6 +361,20 @@ const FAQItem = ({ q, a, important = false }: any) => {
         </div>
     );
 };
+
+const HighQualityLogo = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" className={className} fill="none">
+    <circle cx="50" cy="50" r="48" fill="#FF5A5F" />
+    <g transform="translate(50, 50) scale(0.6)">
+        <circle cx="0" cy="0" r="45" stroke="white" strokeWidth="5" fill="none" />
+        <path d="M-15,-10 Q-12,-15 -9,-10" stroke="white" strokeWidth="5" strokeLinecap="round" />
+        <path d="M9,-10 Q12,-15 15,-10" stroke="white" strokeWidth="5" strokeLinecap="round" />
+        <circle cx="0" cy="5" r="2" fill="white" />
+        <path d="M-10,15 Q0,25 10,15" stroke="white" strokeWidth="5" strokeLinecap="round" />
+        <path d="M0,-45 Q-10,-55 0,-65" stroke="white" strokeWidth="5" strokeLinecap="round" />
+    </g>
+  </svg>
+);
 
 const LegendItem = ({ color, label }: { color: string, label: string }) => (
     <div className="flex items-center gap-1.5">
@@ -225,8 +503,7 @@ const AuthScreen = ({ mode, onSubmit, error, onShowWaiver, onRestore }: any) => 
             <button 
               onClick={() => { 
                 if(window.confirm("WARNING: This will permanently ERASE all your data to reset the app. This cannot be undone.")) { 
-                  localStorage.removeItem('HERA_VAULT_CORE'); 
-                  localStorage.removeItem('HERA_EXT_CONFIG');
+                  localStorage.removeItem('hera_vault'); 
                   window.location.reload(); 
                 } 
               }}
@@ -241,34 +518,10 @@ const AuthScreen = ({ mode, onSubmit, error, onShowWaiver, onRestore }: any) => 
   );
 };
 
-const processImageUpload = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-        const scale = Math.min(100 / img.width, 100 / img.height);
-        canvas.width = img.width * scale;
-        canvas.height = img.height * scale;
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.7));
-      };
-      img.src = e.target?.result as string;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-};
-
 // --- 6. MAIN APP ---
 
 export default function HeraApp() {
   const [state, dispatch] = useReducer(appReducer, DEFAULT_STATE);
-  const [extConfig, setExtConfig] = useState<ExtConfig>(DEFAULT_EXT);
-  
   const [status, setStatus] = useState<'loading' | 'auth' | 'app'>('loading');
   const [authMode, setAuthMode] = useState<'login' | 'setup'>('login');
   const [authError, setAuthError] = useState('');
@@ -279,40 +532,22 @@ export default function HeraApp() {
   const [selectedSummary, setSelectedSummary] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle'|'saving'|'saved'>('idle');
-  
-  // Feature State
-  const [breathingActive, setBreathingActive] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // AI State
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<string | null>(null);
   const idleTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  // --- INIT & CONFIG IO ---
+  // --- INIT ---
   useEffect(() => {
     setIsMounted(true);
-    // Load Core Vault
-    const vault = localStorage.getItem('HERA_VAULT_CORE'); 
+    const vault = localStorage.getItem('hera_vault');
     setAuthMode(vault ? 'login' : 'setup');
     setStatus('auth');
-
-    // Load Extended Config (Sidecar)
-    try {
-      const storedExt = localStorage.getItem('HERA_EXT_CONFIG');
-      if (storedExt) setExtConfig(JSON.parse(storedExt));
-    } catch(e) { console.error('Ext config error'); }
   }, []);
-
-  const updateExtConfig = (update: Partial<ExtConfig>) => {
-    setExtConfig(prev => {
-      const next = { ...prev, ...update };
-      localStorage.setItem('HERA_EXT_CONFIG', JSON.stringify(next));
-      return next;
-    });
-  };
 
   // --- IDLE TIMER ---
   const resetIdleTimer = useCallback(() => {
@@ -334,14 +569,14 @@ export default function HeraApp() {
     try {
       setAuthError('');
       if (authMode === 'setup') {
-        const newState = { ...DEFAULT_STATE };
-        await HeraVault.lock(newState, pass);
-        // Save Liability acceptance to ExtConfig
-        updateExtConfig({ liabilityAccepted: true });
+        const newState = { ...DEFAULT_STATE, profile: { ...DEFAULT_STATE.profile, liabilityAccepted: true } };
+        const encrypted = await HeraSecurity.lock(newState, pass);
+        localStorage.setItem('hera_vault', encrypted);
         dispatch({ type: 'LOAD_STATE', payload: newState });
       } else {
-        const decrypted = await HeraVault.unlock(pass);
-        if (!decrypted) throw new Error("Vault Empty");
+        const stored = localStorage.getItem('hera_vault');
+        if (!stored) throw new Error("No Data");
+        const decrypted = await HeraSecurity.unlock(stored, pass);
         dispatch({ type: 'LOAD_STATE', payload: decrypted });
       }
       passwordRef.current = pass;
@@ -355,7 +590,8 @@ export default function HeraApp() {
     if (!passwordRef.current || status !== 'app') return;
     setSaveStatus('saving');
     try {
-      await HeraVault.lock(state, passwordRef.current);
+      const encrypted = await HeraSecurity.lock(state, passwordRef.current);
+      localStorage.setItem('hera_vault', encrypted);
       dispatch({ type: 'MARK_SAVED' });
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 2000);
@@ -375,12 +611,12 @@ export default function HeraApp() {
     if (e.target.files && e.target.files[0]) {
       try {
         const base64 = await processImageUpload(e.target.files[0]);
-        // Avatar support requires UserProfile extension, omitting to keep types strict for now
-        alert("Avatar saved locally.");
+        dispatch({ type: 'UPDATE_PROFILE', payload: { avatar: base64 } });
       } catch (err) { alert("Image failed to load"); }
     }
   };
 
+  // Restore logic for BOTH Auth and Settings
   const handleRestoreBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -388,9 +624,9 @@ export default function HeraApp() {
     reader.onload = (ev) => {
       const content = ev.target?.result as string;
       try { 
-        JSON.parse(content); 
-        if(window.confirm("WARNING: Overwrite vault?")) { 
-          localStorage.setItem('HERA_VAULT_CORE', content); 
+        JSON.parse(content); // Validate JSON format
+        if(window.confirm("WARNING: This will overwrite the current vault. Ensure you have the password for this backup file if you previously exported it encrypted, otherwise proceed.")) { 
+          localStorage.setItem('hera_vault', content); 
           window.location.reload(); 
         } 
       } catch { alert("Invalid Backup File"); }
@@ -398,45 +634,41 @@ export default function HeraApp() {
     reader.readAsText(file);
   };
 
-  // --- ENGINE LOGIC ---
-  const currentDayEntry = useMemo(() => {
-    return state.cycleData.find(d => d.date === selectedDate) || { 
-      date: selectedDate, temperature: null, mucus: 'none', flow: 'none', notes: '',
-      cervix: 'low_hard', lhTest: 'negative', stressLevel: 1
-    } as CycleDay;
-  }, [state.cycleData, selectedDate]);
+  // --- LOGIC ---
+  const cycleStats = useMemo(() => CycleLogic.analyzeHistory(state.cycleData), [state.cycleData]);
+  const predictions = useMemo(() => CycleLogic.predict(cycleStats.lastStart, cycleStats.avgLength), [cycleStats]);
+  
+  const currentDayEntry = state.cycleData.find(d => d.date === selectedDate) || { 
+    date: selectedDate, temperature: null, mucus: 'none', flow: 'none', notes: '' 
+  };
 
-  const forensics = useMemo(() => {
-    // Determine roughly where in cycle we are for the engine
-    const lastPeriod = [...state.cycleData]
-      .sort((a,b) => b.date.localeCompare(a.date))
-      .find(d => d.flow === 'medium' || d.flow === 'heavy');
+  const getCyclePhase = () => {
+    if (!cycleStats.lastStart) return { name: 'Not Enough Data', color: 'text-slate-400' };
+    const today = new Date().getTime();
+    const lastStart = new Date(cycleStats.lastStart).getTime();
+    const dayOfCycle = Math.floor((today - lastStart) / 86400000) + 1;
     
-    let cycleDay = 14; 
-    if (lastPeriod) {
-      const diff = new Date(selectedDate).getTime() - new Date(lastPeriod.date).getTime();
-      cycleDay = Math.floor(diff / 86400000) + 1;
-      if (cycleDay < 1) cycleDay = 1;
-    }
+    if (dayOfCycle <= 5) return { name: 'Menstruation', color: 'text-rose-500' };
+    if (predictions.fertileWindow.includes(getLocalISODate())) return { name: 'Fertile Window', color: 'text-teal-500' };
+    if (dayOfCycle > 14) return { name: 'Luteal Phase', color: 'text-indigo-500' };
+    return { name: 'Follicular Phase', color: 'text-blue-500' };
+  };
 
-    return HeraEngine.compute({ ...currentDayEntry, cycleDay });
-  }, [currentDayEntry, state.cycleData, selectedDate]);
-
-  // AI REAL LOGIC (Now wired to ExtConfig)
+  // AI REAL LOGIC
   useEffect(() => {
     const fetchAI = async () => {
-      if (!extConfig.aiActive || !extConfig.apiKey) return;
+      if (!state.profile.aiActive || !state.profile.apiKey) return;
       
       setIsThinking(true);
       try {
         const recentData = state.cycleData.slice(-14);
-        const prompt = `Analyze: ${JSON.stringify(recentData)}. Status: ${forensics.status}. Brief forensic health summary.`;
+        const prompt = `Analyze this cycle data: ${JSON.stringify(recentData)}. Current phase: ${getCyclePhase().name}. Brief forensic health summary.`;
         
         const res = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${extConfig.apiKey}`
+            "Authorization": `Bearer ${state.profile.apiKey}`
           },
           body: JSON.stringify({
             model: "gpt-3.5-turbo",
@@ -449,21 +681,19 @@ export default function HeraApp() {
         const data = await res.json();
         setAiInsight(data.choices[0].message.content);
       } catch (e) {
-        setAiInsight("AI Connection Failed.");
+        setAiInsight("AI Connection Failed. Check Key.");
       } finally {
         setIsThinking(false);
       }
     };
 
-    if (activeTab === 'home' && extConfig.aiActive) {
+    if (activeTab === 'home' && state.profile.aiActive) {
+      // Debounce slightly or just run once per mount/state change
       fetchAI();
     }
-  }, [activeTab, extConfig.aiActive, extConfig.apiKey]);
+  }, [activeTab, state.profile.aiActive, state.profile.apiKey]); // Reduced dependency churn
 
-  const theme = THEMES[state.profile.theme];
-  const t = DICTIONARY[state.profile.lang];
-
-  // Calendar Days Logic
+  // Calendar Logic
   const getCalendarDays = () => {
     const viewDate = new Date(selectedDate);
     const year = viewDate.getFullYear();
@@ -476,10 +706,40 @@ export default function HeraApp() {
     return days;
   };
 
+  const theme = THEMES[state.profile.theme];
+  const t = DICTIONARY[state.profile.lang];
+
+  const renderChart = () => {
+    if (!isMounted) return null;
+    const data = state.cycleData.sort((a,b) => a.date.localeCompare(b.date)).slice(-30).map(d => ({
+      date: formatDate(d.date),
+      temp: d.temperature,
+      flow: d.flow === 'none' ? 0 : d.flow === 'spotting' ? 1 : d.flow === 'light' ? 2 : d.flow === 'medium' ? 3 : 4
+    }));
+
+    if (data.length < 2) return <div className="h-full flex items-center justify-center text-slate-300 text-xs font-bold uppercase tracking-wider">Log more data to see chart</div>;
+
+    return (
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+          <XAxis dataKey="date" tick={{fontSize: 9, fill: '#94a3b8'}} axisLine={false} tickLine={false} interval={4} />
+          <YAxis domain={['auto', 'auto']} hide />
+          <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} itemStyle={{ fontSize: '12px', fontWeight: 'bold', color: '#1e293b' }} />
+          <Bar dataKey="flow" barSize={4} radius={[4,4,0,0]}>
+            {data.map((entry, index) => <Cell key={`cell-${index}`} fill={theme.chart} opacity={0.2} />)}
+          </Bar>
+          <Line type="monotone" dataKey="temp" stroke={theme.chart} strokeWidth={3} dot={{r: 2, fill: 'white', strokeWidth: 2}} activeDot={{r: 5}} />
+        </ComposedChart>
+      </ResponsiveContainer>
+    );
+  };
+
   if (!isMounted) return null;
 
   return (
     <div className={`h-[100dvh] ${theme.bg} flex justify-center overflow-hidden font-sans overscroll-none`}>
+      {/* Global Waiver Modal */}
       {showWaiver && <LiabilityModal onClose={() => setShowWaiver(false)} />}
 
       {status === 'auth' && (
@@ -496,8 +756,32 @@ export default function HeraApp() {
         <>
         {saveStatus === 'saved' && <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl z-50 flex items-center gap-2 animate-in fade-in slide-in-from-top-2"><Check size={16} className="text-emerald-400" /> <span className="text-xs font-bold">{t.saved}</span></div>}
 
+        {/* SUMMARY MODAL */}
+        {selectedSummary && (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-6 animate-in fade-in zoom-in duration-200" onClick={()=>setSelectedSummary(null)}>
+                <div className="bg-white rounded-3xl p-6 max-w-xs w-full shadow-2xl" onClick={e=>e.stopPropagation()}>
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="font-black text-lg text-slate-800">{formatDate(selectedSummary)}</h3>
+                        <button onClick={()=>setSelectedSummary(null)} className="p-1 hover:bg-slate-100 rounded-full"><X size={20} className="text-slate-400"/></button>
+                    </div>
+                    {(() => {
+                        const day = state.cycleData.find(d => d.date === selectedSummary);
+                        if (!day) return <p className="text-sm text-slate-400 text-center py-4 italic">No data logged for this day.</p>;
+                        return (
+                            <div className="space-y-3">
+                                {day.temperature && <div className="flex justify-between text-sm p-2 bg-slate-50 rounded-lg"><span className="text-slate-500 font-bold">Temp</span><span className="font-bold text-slate-800">{day.temperature.toFixed(1)}°{state.profile.unit}</span></div>}
+                                {day.flow !== 'none' && <div className="flex justify-between text-sm p-2 bg-rose-50 rounded-lg"><span className="text-rose-500 font-bold">Flow</span><span className="font-bold capitalize text-slate-800">{day.flow}</span></div>}
+                                {day.mucus !== 'none' && <div className="flex justify-between text-sm p-2 bg-teal-50 rounded-lg"><span className="text-teal-600 font-bold">Mucus</span><span className="font-bold capitalize text-slate-800">{day.mucus}</span></div>}
+                                {day.notes && <div className="mt-2 p-3 bg-slate-50 rounded-xl text-xs text-slate-600 italic border border-slate-100">"{day.notes}"</div>}
+                            </div>
+                        );
+                    })()}
+                    <button onClick={()=>{setSelectedDate(selectedSummary); setActiveTab('log'); setSelectedSummary(null);}} className="w-full mt-4 py-3 bg-slate-900 text-white rounded-xl text-xs font-bold shadow-lg hover:scale-[1.02] transition-transform">Edit Entry</button>
+                </div>
+            </div>
+        )}
+
         <div className="w-full max-w-[440px] bg-white h-[100dvh] flex flex-col shadow-2xl relative">
-          
           {/* HEADER */}
           <header className="px-6 pt-12 pb-4 flex justify-between items-center bg-white/80 backdrop-blur-md border-b border-slate-50 z-20 shrink-0">
             <div className="flex items-center gap-3">
@@ -510,66 +794,58 @@ export default function HeraApp() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-               <button onClick={() => setBreathingActive(true)} className="text-slate-300 hover:text-teal-500"><Wind size={20} /></button>
                <button onClick={() => { setStatus('auth'); passwordRef.current = null; }} className="text-slate-300 hover:text-rose-500"><Lock size={20} /></button>
+               <button onClick={() => fileInputRef.current?.click()} className="w-10 h-10 rounded-full bg-slate-100 border-2 border-white shadow-sm overflow-hidden flex items-center justify-center hover:opacity-80 transition-opacity">
+                  {state.profile.avatar ? <img src={state.profile.avatar} className="w-full h-full object-cover" /> : <User size={20} className="text-slate-400" />}
+               </button>
+               <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
             </div>
           </header>
 
-          <AmbientBreather isActive={breathingActive} onDismiss={() => setBreathingActive(false)} />
-
           <main className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-4 pb-32">
-            
             {/* HOME */}
             {activeTab === 'home' && (
               <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                
-                {/* HERO CARD */}
                 <div className={`p-6 rounded-3xl bg-gradient-to-br ${theme.primary} text-white shadow-xl relative overflow-hidden`}>
                   <div className="relative z-10">
                     <div className="flex justify-between items-start mb-4">
-                      <span className="text-[10px] font-bold uppercase tracking-widest opacity-80">Forensic Status</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest opacity-80">Current Phase</span>
                     </div>
-                    <h2 className="text-2xl font-black mb-1">{forensics.status.replace('_', ' ')}</h2>
-                    <p className="text-sm font-medium opacity-90 mb-4">{forensics.actionDirective}</p>
-                    
+                    <h2 className="text-3xl font-black mb-1">{getCyclePhase().name}</h2>
+                    <p className="text-sm font-medium opacity-90 mb-6">
+                      Cycle Day {cycleStats.lastStart ? Math.floor((new Date().getTime() - new Date(cycleStats.lastStart).getTime())/86400000) + 1 : 1}
+                    </p>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="bg-white/20 backdrop-blur-md rounded-xl p-3">
-                        <div className="text-[10px] uppercase font-bold opacity-70 mb-1">Score</div>
-                        <div className="font-bold text-lg">{forensics.score}</div>
+                        <div className="text-[10px] uppercase font-bold opacity-70 mb-1">Next Period</div>
+                        <div className="font-bold text-lg">{predictions.nextPeriod ? new Date(predictions.nextPeriod).toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '--'}</div>
                       </div>
                       <div className="bg-white/20 backdrop-blur-md rounded-xl p-3">
-                        <div className="text-[10px] uppercase font-bold opacity-70 mb-1">Vector</div>
-                        <div className="font-mono text-xs pt-1">{forensics.vectorAnalysis}</div>
+                        <div className="text-[10px] uppercase font-bold opacity-70 mb-1">Fertile Window</div>
+                        <div className="font-bold text-lg">{predictions.fertileWindow.length > 0 ? new Date(predictions.fertileWindow[0]).toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '--'}</div>
                       </div>
                     </div>
                   </div>
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-bl-full pointer-events-none"></div>
                   <Sparkles className="absolute -bottom-4 -right-4 w-40 h-40 text-white opacity-10 pointer-events-none" />
                 </div>
-
-                {/* BIOMETRIC CHART */}
                 <div className="bg-white p-5 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-50">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-bold text-slate-700 flex items-center gap-2"><Activity size={16} className={theme.accent}/> Biometrics</h3>
+                    <h3 className="font-bold text-slate-700 flex items-center gap-2"><Activity size={16} className={theme.accent}/> Trends</h3>
+                    <div className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-full">30 Days</div>
                   </div>
-                  <BiometricChart data={state.cycleData.map(d => ({ 
-                    date: d.date, 
-                    temp: d.temperature, 
-                    heraScore: forensics.score // Mapped current score for vis
-                  }))} />
+                  <div className="h-40 w-full">{renderChart()}</div>
                 </div>
-
-                {/* AI INSIGHT */}
                 <div className="bg-white p-5 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-50">
                     <div className="flex items-center gap-2 mb-3"><BrainCircuit size={18} className={theme.accent}/><span className="font-bold text-slate-700">AI Insight</span></div>
                     <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">
                         {isThinking ? (
                           <span className="flex items-center gap-2 animate-pulse text-slate-400"><Loader2 size={14} className="animate-spin"/> Analysis in progress...</span>
                         ) : (
-                          aiInsight || (extConfig.aiActive ? "Waiting for data..." : "Enable AI in Settings for advanced analysis.")
+                          aiInsight || (state.profile.aiActive ? "Waiting for data..." : "Enable AI in Settings for advanced analysis.")
                         )}
                     </p>
                 </div>
-
               </div>
             )}
 
@@ -584,7 +860,6 @@ export default function HeraApp() {
                   </div>
                   <button onClick={() => setSelectedDate(curr => { const d = new Date(curr); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; })}><ChevronRight className="text-slate-400" /></button>
                 </div>
-                
                 <LogCard title={t.temp}>
                   <div className="flex items-center justify-between">
                     <button className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-600 active:scale-90 transition-transform" onClick={() => dispatch({ type: 'UPDATE_CYCLE_DAY', payload: { ...currentDayEntry, temperature: (currentDayEntry.temperature || 36.5) - 0.1 }})}><Minus size={20}/></button>
@@ -592,34 +867,15 @@ export default function HeraApp() {
                     <button className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-600 active:scale-90 transition-transform" onClick={() => dispatch({ type: 'UPDATE_CYCLE_DAY', payload: { ...currentDayEntry, temperature: (currentDayEntry.temperature || 36.5) + 0.1 }})}><Plus size={20}/></button>
                   </div>
                 </LogCard>
-
                 <LogCard title={t.mens}>
                   <div className="flex justify-between gap-2">{['none', 'light', 'medium', 'heavy'].map((flow) => (<button key={flow} onClick={() => dispatch({ type: 'UPDATE_CYCLE_DAY', payload: { ...currentDayEntry, flow: flow as any }})} className={`flex-1 py-3 rounded-xl text-[10px] font-bold uppercase transition-all ${currentDayEntry.flow === flow ? theme.active : 'bg-slate-50 text-slate-400'}`}>{flow}</button>))}</div>
                 </LogCard>
-
                 <LogCard title={t.mucus}>
                   <div className="grid grid-cols-3 gap-2">{['dry', 'sticky', 'creamy', 'watery', 'eggwhite'].map((m) => (<button key={m} onClick={() => dispatch({ type: 'UPDATE_CYCLE_DAY', payload: { ...currentDayEntry, mucus: m as any }})} className={`py-3 rounded-xl text-[10px] font-bold uppercase transition-all ${currentDayEntry.mucus === m ? theme.active : 'bg-slate-50 text-slate-400'}`}>{m}</button>))}</div>
                 </LogCard>
-
-                <LogCard title="Cervix Position">
-                  <div className="flex justify-between gap-2">{['low_hard', 'med_firm', 'high_soft'].map((c) => (<button key={c} onClick={() => dispatch({ type: 'UPDATE_CYCLE_DAY', payload: { ...currentDayEntry, cervix: c as any }})} className={`flex-1 py-3 rounded-xl text-[10px] font-bold uppercase transition-all ${currentDayEntry.cervix === c ? theme.active : 'bg-slate-50 text-slate-400'}`}>{c.replace('_', ' ')}</button>))}</div>
-                </LogCard>
-
-                <LogCard title="LH Test">
-                  <div className="flex justify-between gap-2">{['negative', 'faint', 'equal', 'peak'].map((l) => (<button key={l} onClick={() => dispatch({ type: 'UPDATE_CYCLE_DAY', payload: { ...currentDayEntry, lhTest: l as any }})} className={`flex-1 py-3 rounded-xl text-[10px] font-bold uppercase transition-all ${currentDayEntry.lhTest === l ? theme.active : 'bg-slate-50 text-slate-400'}`}>{l}</button>))}</div>
-                </LogCard>
-
-                <LogCard title="Stress Level (1-10)">
-                   <div className="flex items-center gap-4">
-                      <input type="range" min="1" max="10" step="1" value={currentDayEntry.stressLevel || 1} onChange={(e) => dispatch({ type: 'UPDATE_CYCLE_DAY', payload: { ...currentDayEntry, stressLevel: parseInt(e.target.value) }})} className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-rose-500" />
-                      <span className="font-bold text-slate-800 w-8 text-center">{currentDayEntry.stressLevel || 1}</span>
-                   </div>
-                </LogCard>
-
                 <LogCard title={t.notes}>
                      <textarea className="w-full bg-slate-50 border-0 rounded-xl p-4 text-sm text-slate-600 focus:ring-2 focus:ring-rose-200 h-32 resize-none" placeholder="..." value={currentDayEntry.notes} onChange={e=>dispatch({ type: 'UPDATE_CYCLE_DAY', payload: { ...currentDayEntry, notes: e.target.value } })} />
                  </LogCard>
-
                  <button onClick={saveToVault} className={`w-full text-white font-bold py-4 rounded-2xl shadow-lg hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 active:scale-95 ${theme.logBtn}`}><Save size={20} /> {t.save}</button>
               </div>
             )}
@@ -634,6 +890,13 @@ export default function HeraApp() {
                      <button onClick={()=>{const d=new Date(selectedDate); d.setMonth(d.getMonth()+1); setSelectedDate(getLocalISODate(d));}}><ChevronRight size={20} className="text-slate-400 hover:text-slate-600"/></button>
                    </div>
                    
+                   {/* Biometric Pattern Strip */}
+                   <div className="h-8 w-full bg-slate-50 rounded-xl overflow-hidden relative mb-6 border border-slate-100 flex items-center justify-center">
+                      <div className={`absolute inset-0 opacity-20 bg-gradient-to-r ${theme.primary}`}></div>
+                      <svg className="w-full h-full absolute" preserveAspectRatio="none"><path d="M0,32 C50,10 100,0 150,10 S250,32 300,10 S400,0 440,10" fill="none" stroke="rgba(0,0,0,0.1)" strokeWidth="2"/></svg>
+                      <span className="relative text-[9px] font-bold text-slate-400 tracking-widest uppercase flex items-center gap-1"><Sparkles size={8}/> Pattern</span>
+                   </div>
+
                    <div className="grid grid-cols-7 gap-2 mb-2">
                      {['S','M','T','W','T','F','S'].map(d => <div key={d} className="text-center text-[10px] font-bold text-slate-300">{d}</div>)}
                    </div>
@@ -642,6 +905,7 @@ export default function HeraApp() {
                        if (!dateStr) return <div key={i} className="aspect-square"></div>;
                        const dayNum = parseInt(dateStr.split('-')[2]);
                        const entry = state.cycleData.find(d => d.date === dateStr);
+                       const isFertile = predictions.fertileWindow.includes(dateStr);
                        const isPeriod = entry?.flow !== 'none' && entry?.flow;
                        return (
                          <button 
@@ -650,9 +914,14 @@ export default function HeraApp() {
                            className={`aspect-square rounded-xl flex flex-col items-center justify-center relative transition-all ${dateStr === selectedDate ? `ring-2 ring-${theme.accent.split('-')[1]}-400` : ''} ${isPeriod ? 'bg-rose-100 text-rose-600' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
                          >
                            <span className="text-xs font-bold">{dayNum}</span>
+                           {isFertile && <div className="w-1.5 h-1.5 rounded-full bg-teal-400 absolute bottom-1.5"></div>}
                          </button>
                        )
                      })}
+                   </div>
+                   <div className="mt-6 flex justify-center gap-4 border-t border-slate-50 pt-4">
+                      <LegendItem color="bg-rose-400" label="Period" />
+                      <LegendItem color="bg-teal-400" label="Fertile" />
                    </div>
                  </div>
               </div>
@@ -668,6 +937,7 @@ export default function HeraApp() {
                     ))}
                   </div>
                 </LogCard>
+                {/* NEW PREFERENCES SECTION */}
                 <LogCard title="Preferences">
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-sm font-bold text-slate-700">Temperature Unit</span>
@@ -684,29 +954,26 @@ export default function HeraApp() {
                     </div>
                   </div>
                 </LogCard>
-                
-                {/* INTELLIGENCE: Now using ExtConfig */}
                 <LogCard title="Intelligence">
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-sm font-bold text-slate-700">Activate Assistant</span>
                     <div 
-                      onClick={() => updateExtConfig({ aiActive: !extConfig.aiActive })}
-                      className={`w-12 h-7 rounded-full relative transition-colors cursor-pointer ${extConfig.aiActive ? 'bg-emerald-500' : 'bg-slate-200'}`}
+                      onClick={() => dispatch({type: 'UPDATE_PROFILE', payload: { aiActive: !state.profile.aiActive }})}
+                      className={`w-12 h-7 rounded-full relative transition-colors cursor-pointer ${state.profile.aiActive ? 'bg-emerald-500' : 'bg-slate-200'}`}
                     >
-                      <div className={`w-5 h-5 bg-white rounded-full shadow-sm absolute top-1 transition-all ${extConfig.aiActive ? 'left-6' : 'left-1'}`} />
+                      <div className={`w-5 h-5 bg-white rounded-full shadow-sm absolute top-1 transition-all ${state.profile.aiActive ? 'left-6' : 'left-1'}`} />
                     </div>
                   </div>
-                  {extConfig.aiActive && (
+                  {state.profile.aiActive && (
                     <input 
                       type="password"
                       placeholder="API Key (OpenAI)"
                       className="w-full p-3 bg-slate-50 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-100"
-                      onChange={(e) => updateExtConfig({ apiKey: e.target.value })}
-                      value={extConfig.apiKey || ''}
+                      onChange={(e) => dispatch({type: 'UPDATE_PROFILE', payload: { apiKey: e.target.value }})}
+                      value={state.profile.apiKey || ''}
                     />
                   )}
                 </LogCard>
-
                 <LogCard title="Data Management">
                   <div className="space-y-3">
                       <button onClick={() => { const blob = new Blob([JSON.stringify(state)], {type: 'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download='hera_backup.json'; a.click(); }} className="w-full py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 flex items-center justify-center gap-2"><Download size={14}/> Backup Data (JSON)</button>
@@ -722,7 +989,7 @@ export default function HeraApp() {
               </div>
             )}
 
-            {/* HELP */}
+            {/* HELP & FAQ (Expanded) */}
             {activeTab === 'help' && (
                 <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
                     <LogCard title="Critical Information">
@@ -738,13 +1005,12 @@ export default function HeraApp() {
                         <button onClick={() => setShowWaiver(true)} className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-rose-500 transition-colors">
                           View Legal Disclaimer
                         </button>
-                        <p className="text-[9px] text-slate-300">Hera Cycle v100.8 | Sovereign Build</p>
+                        <p className="text-[9px] text-slate-300">Hera Cycle v100.6 | Sovereign Build</p>
                     </div>
                 </div>
             )}
           </main>
 
-          {/* NAV BAR */}
           <div className="absolute bottom-0 w-full bg-white border-t border-slate-50 p-2 pb-6 px-6 z-30 flex justify-between items-end shrink-0">
             <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center gap-1 ${activeTab === 'home' ? theme.accent : 'text-slate-300'}`}><Home size={24} strokeWidth={activeTab === 'home' ? 3 : 2} /><span className="text-[9px] font-bold uppercase tracking-wider">{t.home}</span></button>
             <button onClick={() => setActiveTab('calendar')} className={`flex flex-col items-center gap-1 ${activeTab === 'calendar' ? theme.accent : 'text-slate-300'}`}><CalendarIcon size={24} strokeWidth={activeTab === 'calendar' ? 3 : 2} /><span className="text-[9px] font-bold uppercase tracking-wider">{t.cal}</span></button>

@@ -19,10 +19,10 @@ import {
 } from 'lucide-react';
 
 /**
- * HERA CYCLE - v98.0 (Gold Master)
- * - Strict Zero-Knowledge Security (Hash Verification)
- * - Full Feature Parity with Original HTML
- * - Mobile Optimized (100dvh)
+ * HERA CYCLE - v98.1 (Build Fix)
+ * - Fixed 'confirm' variable shadowing in AuthScreen
+ * - Preserved Strict Zero-Knowledge Security
+ * - Preserved Cycle Algorithms & UI
  */
 
 // --- 1. DOMAIN MODELS ---
@@ -411,7 +411,13 @@ const AuthScreen = ({ mode, onSubmit, error }: any) => {
           
           {mode === 'login' && (
             <button 
-              onClick={() => { if(confirm("Resetting wipes ALL data. This cannot be undone.")) { localStorage.removeItem('hera_vault'); window.location.reload(); } }}
+              onClick={() => { 
+                // FIX: Use window.confirm to avoid shadowing the local 'confirm' variable
+                if(window.confirm("Resetting wipes ALL data. This cannot be undone.")) { 
+                  localStorage.removeItem('hera_vault'); 
+                  window.location.reload(); 
+                } 
+              }}
               className="w-full py-2 text-slate-400 text-xs font-bold hover:text-red-500"
             >
               Reset App Data

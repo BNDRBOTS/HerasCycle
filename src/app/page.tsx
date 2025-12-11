@@ -19,11 +19,10 @@ import {
 } from 'lucide-react';
 
 /**
- * HERA CYCLE - v100.1 (Sovereign Edition)
- * - Comprehensive FAQ & Backup Protocols added.
- * - Persistent Liability Disclaimer access.
+ * HERA CYCLE - v100.2 (Sovereign Edition - Security Visuals Patched)
+ * - Implemented ShieldAlert for Liability & Critical Warnings.
+ * - Maintained all FAQ content & Unit logic.
  * - Strict Mobile Viewport (100dvh).
- * - Zero-Knowledge Architecture maintained.
  */
 
 // --- 1. DOMAIN MODELS ---
@@ -352,7 +351,8 @@ const FAQItem = ({ q, a, important = false }: any) => {
         <div className={`border-b border-slate-100 last:border-0 bg-white ${important ? 'bg-rose-50/50' : ''}`}>
             <button onClick={()=>setIsOpen(!isOpen)} className="w-full py-4 flex justify-between items-center text-left hover:bg-slate-50 transition-colors px-2 rounded-xl focus:outline-none">
                 <span className={`font-bold text-xs pr-4 ${important ? 'text-rose-700' : 'text-slate-700'}`}>
-                  {important && <AlertCircle size={12} className="inline mr-2 -mt-0.5" />}
+                  {/* REPLACED AlertCircle with ShieldAlert for Critical Items */}
+                  {important && <ShieldAlert size={12} className="inline mr-2 -mt-0.5" />}
                   {q}
                 </span>
                 {isOpen ? <ChevronUp size={14} className="text-slate-400 flex-shrink-0"/> : <ChevronDown size={14} className="text-slate-400 flex-shrink-0"/>}
@@ -399,7 +399,8 @@ const LiabilityModal = ({ onClose }: { onClose: () => void }) => (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6 animate-in fade-in zoom-in">
         <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden flex flex-col max-h-[80vh]">
             <div className="p-6 bg-rose-50 border-b border-rose-100 text-center">
-                <AlertTriangle size={32} className="text-rose-500 mx-auto mb-2" />
+                {/* REPLACED AlertTriangle with ShieldAlert for Disclaimer */}
+                <ShieldAlert size={32} className="text-rose-500 mx-auto mb-2" />
                 <h2 className="text-lg font-black text-slate-800">Legal Disclaimer</h2>
             </div>
             <div className="p-6 overflow-y-auto">
@@ -915,6 +916,7 @@ export default function HeraApp() {
             {activeTab === 'help' && (
                 <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
                     <LogCard title="Critical Information">
+                        {/* REPLACED: Use ShieldAlert for critical warnings */}
                         <FAQItem important q="PROTOCOL: BACKUP FREQUENCY" a="We strictly recommend exporting your vault data WEEKLY. Because Hera uses Zero-Knowledge encryption, we cannot recover your data if your device is lost or cleared. You are the sole custodian of your cycle history. Go to Settings > Backup Data." />
                         <FAQItem important q="LEGAL: CONTRACEPTION" a="Hera is NOT a contraceptive device. It is a data logging tool. Relying on this app to prevent pregnancy is dangerous. Always use primary protection." />
                     </LogCard>
@@ -928,7 +930,7 @@ export default function HeraApp() {
                         <button onClick={() => setShowWaiver(true)} className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-rose-500 transition-colors">
                           View Legal Disclaimer
                         </button>
-                        <p className="text-[9px] text-slate-300">Hera Cycle v100.1 | Sovereign Build</p>
+                        <p className="text-[9px] text-slate-300">Hera Cycle v100.2 | Sovereign Build</p>
                     </div>
                 </div>
             )}

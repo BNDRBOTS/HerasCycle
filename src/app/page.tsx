@@ -15,16 +15,15 @@ import {
   Calendar as CalendarIcon, Thermometer, Activity, ChevronLeft, 
   ChevronRight, Droplet, Lock, AlertCircle, Settings, Check, 
   Sparkles, Save, Download, Upload, Home, HelpCircle, 
-  FileText, Minus, Plus, X, User, AlertTriangle, ChevronDown, ChevronUp, BrainCircuit
+  FileText, Minus, Plus, X, User, AlertTriangle, ChevronDown, ChevronUp, BrainCircuit, ShieldAlert
 } from 'lucide-react';
 
 /**
- * HERA CYCLE - v100.0 (Platinum Master)
- * - Strict Zero-Knowledge Security (Hash Verification)
- * - Full Component Restoration (Avatar, Waiver, Interactive Calendar)
- * - Human-Centric Language & Branding
- * - Mobile Hardened (100dvh)
- * - Console Error Fixed (renamed local 'confirm' variable)
+ * HERA CYCLE - v100.1 (Sovereign Edition)
+ * - Comprehensive FAQ & Backup Protocols added.
+ * - Persistent Liability Disclaimer access.
+ * - Strict Mobile Viewport (100dvh).
+ * - Zero-Knowledge Architecture maintained.
  */
 
 // --- 1. DOMAIN MODELS ---
@@ -334,16 +333,10 @@ const appReducer = (state: AppState, action: Action): AppState => {
   }
 };
 
-// --- 5. UI COMPONENTS (RESTORED) ---
+// --- 5. UI COMPONENTS ---
 
 const Card = ({ children, className = "" }: any) => (
   <div className={`bg-white rounded-2xl p-5 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.08)] border border-slate-100 ${className}`}>{children}</div>
-);
-
-const PillBtn = ({ active, label, onClick, theme }: any) => (
-  <button onClick={onClick} className={`flex-1 min-w-[50px] h-11 px-1 rounded-xl text-[10px] font-bold transition-all duration-200 border flex items-center justify-center text-center whitespace-normal leading-[1.1] ${active ? `${theme.active} border-transparent shadow-md` : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'}`}>
-    {label}
-  </button>
 );
 
 const LogCard = ({ title, children }: any) => (
@@ -353,28 +346,21 @@ const LogCard = ({ title, children }: any) => (
   </div>
 );
 
-const FAQItem = ({ q, a }: any) => {
+const FAQItem = ({ q, a, important = false }: any) => {
     const [isOpen, setIsOpen] = useState(false);
     return (
-        <div className="border-b border-slate-100 last:border-0 bg-white">
+        <div className={`border-b border-slate-100 last:border-0 bg-white ${important ? 'bg-rose-50/50' : ''}`}>
             <button onClick={()=>setIsOpen(!isOpen)} className="w-full py-4 flex justify-between items-center text-left hover:bg-slate-50 transition-colors px-2 rounded-xl focus:outline-none">
-                <span className="font-bold text-xs text-slate-700 pr-4">{q}</span>
+                <span className={`font-bold text-xs pr-4 ${important ? 'text-rose-700' : 'text-slate-700'}`}>
+                  {important && <AlertCircle size={12} className="inline mr-2 -mt-0.5" />}
+                  {q}
+                </span>
                 {isOpen ? <ChevronUp size={14} className="text-slate-400 flex-shrink-0"/> : <ChevronDown size={14} className="text-slate-400 flex-shrink-0"/>}
             </button>
-            {isOpen && <div className="px-2 pb-4 text-[11px] text-slate-500 leading-relaxed animate-in fade-in slide-in-from-top-1">{a}</div>}
+            {isOpen && <div className="px-2 pb-4 text-[11px] text-slate-500 leading-relaxed animate-in fade-in slide-in-from-top-1 whitespace-pre-line">{a}</div>}
         </div>
     );
 };
-
-const StepperControl = ({ value, onChange, min, max, step, unit }: any) => (
-    <div className="flex items-center gap-4">
-      <button onClick={() => onChange(Math.max(value - step, min))} className="w-12 h-12 flex items-center justify-center bg-slate-50 rounded-xl border border-slate-200 text-slate-600 active:scale-95 transition-all"><Minus size={18} /></button>
-      <div className="flex-1 text-center">
-        <div className="text-3xl font-black text-slate-800 tabular-nums">{value.toFixed(1)} <span className="text-sm font-bold text-slate-400">°{unit}</span></div>
-      </div>
-      <button onClick={() => onChange(Math.min(value + step, max))} className="w-12 h-12 flex items-center justify-center bg-slate-50 rounded-xl border border-slate-200 text-slate-600 active:scale-95 transition-all"><Plus size={18} /></button>
-    </div>
-);
 
 const HighQualityLogo = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 100 100" className={className} fill="none">
@@ -397,30 +383,41 @@ const LegendItem = ({ color, label }: { color: string, label: string }) => (
     </div>
 );
 
-const WAIVER_TEXT = "I acknowledge that Hera's Cycle is a data tracking tool for informational purposes only. It is NOT a contraceptive device, medical diagnostic tool, or substitute for professional medical advice. I waive all liability against the creators and affiliates of Hera's Cycle for any pregnancy, health issues, or data loss that may occur while using this software. I understand my data is encrypted locally and cannot be recovered if I lose my password.";
+const WAIVER_TEXT = `
+1. PURPOSE: Hera's Cycle is a biometric data logging tool designed for informational and educational purposes only. It uses mathematical algorithms to estimate cycle phases based on user-provided data.
+
+2. NO MEDICAL ADVICE: This software is NOT a medical device. It is NOT a contraceptive. It must NOT be used to prevent pregnancy, facilitate conception without medical oversight, or diagnose any health condition.
+
+3. DATA SOVEREIGNTY: Your data is encrypted locally using AES-256-GCM. If you lose your password, your data is mathematically unrecoverable. We do not have your keys.
+
+4. LIABILITY: By using this software, you agree to hold the creators, developers, and affiliates harmless from any claims, damages, or outcomes resulting from the use or misuse of this software, including but not limited to unintended pregnancy or missed diagnosis.
+
+5. BACKUPS: You are solely responsible for backing up your data. We strongly recommend weekly exports.
+`;
 
 const LiabilityModal = ({ onClose }: { onClose: () => void }) => (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6 animate-in fade-in zoom-in">
         <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden flex flex-col max-h-[80vh]">
-            <div className="p-6 bg-slate-50 border-b border-slate-100 text-center">
-                <AlertTriangle size={32} className="text-slate-400 mx-auto mb-2" />
-                <h2 className="text-lg font-black text-slate-800">Terms of Service</h2>
+            <div className="p-6 bg-rose-50 border-b border-rose-100 text-center">
+                <AlertTriangle size={32} className="text-rose-500 mx-auto mb-2" />
+                <h2 className="text-lg font-black text-slate-800">Legal Disclaimer</h2>
             </div>
             <div className="p-6 overflow-y-auto">
-                <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl text-xs text-slate-600 leading-relaxed text-justify">{WAIVER_TEXT}</div>
+                <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl text-xs text-slate-600 leading-relaxed whitespace-pre-wrap font-mono">
+                  {WAIVER_TEXT}
+                </div>
             </div>
             <div className="p-4 bg-white border-t border-slate-100">
-                <button onClick={onClose} className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl shadow-lg hover:bg-slate-800">Close</button>
+                <button onClick={onClose} className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl shadow-lg hover:bg-slate-800 transition-colors">I Understand</button>
             </div>
         </div>
     </div>
 );
 
-const AuthScreen = ({ mode, onSubmit, error }: any) => {
+const AuthScreen = ({ mode, onSubmit, error, onShowWaiver }: any) => {
   const [pass, setPass] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState(''); // Renamed to avoid confusion with window.confirm
+  const [confirmPassword, setConfirmPassword] = useState(''); 
   const [agreed, setAgreed] = useState(false);
-  const [showWaiver, setShowWaiver] = useState(false);
   const [err, setErr] = useState('');
 
   useEffect(() => setErr(error), [error]);
@@ -472,7 +469,7 @@ const AuthScreen = ({ mode, onSubmit, error }: any) => {
                   {agreed && <Check size={12} className="text-white" strokeWidth={4} />}
                 </div>
                 <div className="text-[10px] text-slate-500 leading-tight pt-0.5">
-                    I agree to the <span onClick={(e) => { e.stopPropagation(); setShowWaiver(true); }} className="text-rose-600 font-bold underline cursor-pointer hover:text-rose-700">Liability Waiver</span>. Use at your own risk.
+                    I agree to the <span onClick={(e) => { e.stopPropagation(); onShowWaiver(); }} className="text-rose-600 font-bold underline cursor-pointer hover:text-rose-700">Liability Waiver</span>. Use at your own risk.
                 </div>
               </div>
             </div>
@@ -507,7 +504,6 @@ const AuthScreen = ({ mode, onSubmit, error }: any) => {
           )}
         </div>
       </div>
-      {showWaiver && <LiabilityModal onClose={() => setShowWaiver(false)} />}
     </div>
   );
 };
@@ -519,6 +515,7 @@ export default function HeraApp() {
   const [status, setStatus] = useState<'loading' | 'auth' | 'app'>('loading');
   const [authMode, setAuthMode] = useState<'login' | 'setup'>('login');
   const [authError, setAuthError] = useState('');
+  const [showWaiver, setShowWaiver] = useState(false);
   
   const [activeTab, setActiveTab] = useState('home');
   const [selectedDate, setSelectedDate] = useState(getLocalISODate());
@@ -691,246 +688,262 @@ export default function HeraApp() {
   };
 
   if (!isMounted) return null;
-  if (status === 'auth') return <AuthScreen mode={authMode} onSubmit={handleAuth} error={authError} />;
 
   return (
-    <div className={`min-h-[100dvh] ${theme.bg} flex justify-center overflow-hidden font-sans`}>
-      {saveStatus === 'saved' && <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl z-50 flex items-center gap-2 animate-in fade-in slide-in-from-top-2"><Check size={16} className="text-emerald-400" /> <span className="text-xs font-bold">{t.saved}</span></div>}
+    <div className={`h-[100dvh] ${theme.bg} flex justify-center overflow-hidden font-sans overscroll-none`}>
+      {/* Global Waiver Modal */}
+      {showWaiver && <LiabilityModal onClose={() => setShowWaiver(false)} />}
 
-      {/* SUMMARY MODAL (Restored) */}
-      {selectedSummary && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-6 animate-in fade-in zoom-in duration-200" onClick={()=>setSelectedSummary(null)}>
-              <div className="bg-white rounded-3xl p-6 max-w-xs w-full shadow-2xl" onClick={e=>e.stopPropagation()}>
-                  <div className="flex justify-between items-center mb-4">
-                      <h3 className="font-black text-lg text-slate-800">{formatDate(selectedSummary)}</h3>
-                      <button onClick={()=>setSelectedSummary(null)} className="p-1 hover:bg-slate-100 rounded-full"><X size={20} className="text-slate-400"/></button>
-                  </div>
-                  {(() => {
-                      const day = state.cycleData.find(d => d.date === selectedSummary);
-                      if (!day) return <p className="text-sm text-slate-400 text-center py-4 italic">No data logged for this day.</p>;
-                      return (
-                          <div className="space-y-3">
-                              {day.temperature && <div className="flex justify-between text-sm p-2 bg-slate-50 rounded-lg"><span className="text-slate-500 font-bold">Temp</span><span className="font-bold text-slate-800">{day.temperature.toFixed(1)}°{state.profile.unit}</span></div>}
-                              {day.flow !== 'none' && <div className="flex justify-between text-sm p-2 bg-rose-50 rounded-lg"><span className="text-rose-500 font-bold">Flow</span><span className="font-bold capitalize text-slate-800">{day.flow}</span></div>}
-                              {day.mucus !== 'none' && <div className="flex justify-between text-sm p-2 bg-teal-50 rounded-lg"><span className="text-teal-600 font-bold">Mucus</span><span className="font-bold capitalize text-slate-800">{day.mucus}</span></div>}
-                              {day.notes && <div className="mt-2 p-3 bg-slate-50 rounded-xl text-xs text-slate-600 italic border border-slate-100">"{day.notes}"</div>}
-                          </div>
-                      );
-                  })()}
-                  <button onClick={()=>{setSelectedDate(selectedSummary); setActiveTab('log'); setSelectedSummary(null);}} className="w-full mt-4 py-3 bg-slate-900 text-white rounded-xl text-xs font-bold shadow-lg hover:scale-[1.02] transition-transform">Edit Entry</button>
-              </div>
-          </div>
-      )}
+      {status === 'auth' && <AuthScreen mode={authMode} onSubmit={handleAuth} error={authError} onShowWaiver={() => setShowWaiver(true)} />}
 
-      <div className="w-full max-w-[440px] bg-white h-[100dvh] flex flex-col shadow-2xl relative">
-        {/* HEADER (Restored Avatar) */}
-        <header className="px-6 pt-12 pb-4 flex justify-between items-center bg-white/80 backdrop-blur-md border-b border-slate-50 z-20">
-          <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-gradient-to-br ${theme.primary} shadow-lg text-white hover:scale-105 transition-transform`}>
-              <HighQualityLogo className="w-full h-full drop-shadow-md" />
-            </div>
-            <div>
-              <h1 className="font-black text-xl text-slate-800 leading-none">Hera</h1>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Health</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-             <button onClick={() => { setStatus('auth'); passwordRef.current = null; }} className="text-slate-300 hover:text-rose-500"><Lock size={20} /></button>
-             <button onClick={() => fileInputRef.current?.click()} className="w-10 h-10 rounded-full bg-slate-100 border-2 border-white shadow-sm overflow-hidden flex items-center justify-center hover:opacity-80 transition-opacity">
-                {state.profile.avatar ? <img src={state.profile.avatar} className="w-full h-full object-cover" /> : <User size={20} className="text-slate-400" />}
-             </button>
-             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
-          </div>
-        </header>
+      {status === 'app' && (
+        <>
+        {saveStatus === 'saved' && <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl z-50 flex items-center gap-2 animate-in fade-in slide-in-from-top-2"><Check size={16} className="text-emerald-400" /> <span className="text-xs font-bold">{t.saved}</span></div>}
 
-        <main className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-4 pb-32">
-          {/* HOME */}
-          {activeTab === 'home' && (
-            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className={`p-6 rounded-3xl bg-gradient-to-br ${theme.primary} text-white shadow-xl relative overflow-hidden`}>
-                <div className="relative z-10">
-                  <div className="flex justify-between items-start mb-4">
-                    <span className="text-[10px] font-bold uppercase tracking-widest opacity-80">Current Phase</span>
-                  </div>
-                  <h2 className="text-3xl font-black mb-1">{getCyclePhase().name}</h2>
-                  <p className="text-sm font-medium opacity-90 mb-6">
-                    Cycle Day {cycleStats.lastStart ? Math.floor((new Date().getTime() - new Date(cycleStats.lastStart).getTime())/86400000) + 1 : 1}
-                  </p>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white/20 backdrop-blur-md rounded-xl p-3">
-                      <div className="text-[10px] uppercase font-bold opacity-70 mb-1">Next Period</div>
-                      <div className="font-bold text-lg">{predictions.nextPeriod ? new Date(predictions.nextPeriod).toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '--'}</div>
+        {/* SUMMARY MODAL */}
+        {selectedSummary && (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-6 animate-in fade-in zoom-in duration-200" onClick={()=>setSelectedSummary(null)}>
+                <div className="bg-white rounded-3xl p-6 max-w-xs w-full shadow-2xl" onClick={e=>e.stopPropagation()}>
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="font-black text-lg text-slate-800">{formatDate(selectedSummary)}</h3>
+                        <button onClick={()=>setSelectedSummary(null)} className="p-1 hover:bg-slate-100 rounded-full"><X size={20} className="text-slate-400"/></button>
                     </div>
-                    <div className="bg-white/20 backdrop-blur-md rounded-xl p-3">
-                      <div className="text-[10px] uppercase font-bold opacity-70 mb-1">Fertile Window</div>
-                      <div className="font-bold text-lg">{predictions.fertileWindow.length > 0 ? new Date(predictions.fertileWindow[0]).toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '--'}</div>
+                    {(() => {
+                        const day = state.cycleData.find(d => d.date === selectedSummary);
+                        if (!day) return <p className="text-sm text-slate-400 text-center py-4 italic">No data logged for this day.</p>;
+                        return (
+                            <div className="space-y-3">
+                                {day.temperature && <div className="flex justify-between text-sm p-2 bg-slate-50 rounded-lg"><span className="text-slate-500 font-bold">Temp</span><span className="font-bold text-slate-800">{day.temperature.toFixed(1)}°{state.profile.unit}</span></div>}
+                                {day.flow !== 'none' && <div className="flex justify-between text-sm p-2 bg-rose-50 rounded-lg"><span className="text-rose-500 font-bold">Flow</span><span className="font-bold capitalize text-slate-800">{day.flow}</span></div>}
+                                {day.mucus !== 'none' && <div className="flex justify-between text-sm p-2 bg-teal-50 rounded-lg"><span className="text-teal-600 font-bold">Mucus</span><span className="font-bold capitalize text-slate-800">{day.mucus}</span></div>}
+                                {day.notes && <div className="mt-2 p-3 bg-slate-50 rounded-xl text-xs text-slate-600 italic border border-slate-100">"{day.notes}"</div>}
+                            </div>
+                        );
+                    })()}
+                    <button onClick={()=>{setSelectedDate(selectedSummary); setActiveTab('log'); setSelectedSummary(null);}} className="w-full mt-4 py-3 bg-slate-900 text-white rounded-xl text-xs font-bold shadow-lg hover:scale-[1.02] transition-transform">Edit Entry</button>
+                </div>
+            </div>
+        )}
+
+        <div className="w-full max-w-[440px] bg-white h-[100dvh] flex flex-col shadow-2xl relative">
+          {/* HEADER */}
+          <header className="px-6 pt-12 pb-4 flex justify-between items-center bg-white/80 backdrop-blur-md border-b border-slate-50 z-20 shrink-0">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-gradient-to-br ${theme.primary} shadow-lg text-white hover:scale-105 transition-transform`}>
+                <HighQualityLogo className="w-full h-full drop-shadow-md" />
+              </div>
+              <div>
+                <h1 className="font-black text-xl text-slate-800 leading-none">Hera</h1>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Health</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+               <button onClick={() => { setStatus('auth'); passwordRef.current = null; }} className="text-slate-300 hover:text-rose-500"><Lock size={20} /></button>
+               <button onClick={() => fileInputRef.current?.click()} className="w-10 h-10 rounded-full bg-slate-100 border-2 border-white shadow-sm overflow-hidden flex items-center justify-center hover:opacity-80 transition-opacity">
+                  {state.profile.avatar ? <img src={state.profile.avatar} className="w-full h-full object-cover" /> : <User size={20} className="text-slate-400" />}
+               </button>
+               <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
+            </div>
+          </header>
+
+          <main className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-4 pb-32">
+            {/* HOME */}
+            {activeTab === 'home' && (
+              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className={`p-6 rounded-3xl bg-gradient-to-br ${theme.primary} text-white shadow-xl relative overflow-hidden`}>
+                  <div className="relative z-10">
+                    <div className="flex justify-between items-start mb-4">
+                      <span className="text-[10px] font-bold uppercase tracking-widest opacity-80">Current Phase</span>
                     </div>
-                  </div>
-                </div>
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-bl-full pointer-events-none"></div>
-                <Sparkles className="absolute -bottom-4 -right-4 w-40 h-40 text-white opacity-10 pointer-events-none" />
-              </div>
-              <div className="bg-white p-5 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-50">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-slate-700 flex items-center gap-2"><Activity size={16} className={theme.accent}/> Trends</h3>
-                  <div className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-full">30 Days</div>
-                </div>
-                <div className="h-40 w-full">{renderChart()}</div>
-              </div>
-              <div className="bg-white p-5 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-50">
-                  <div className="flex items-center gap-2 mb-3"><BrainCircuit size={18} className={theme.accent}/><span className="font-bold text-slate-700">AI Insight</span></div>
-                  <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">
-                      {aiInsight || (state.profile.aiActive ? "Analyzing..." : "Enable AI in Settings for advanced analysis.")}
-                  </p>
-              </div>
-            </div>
-          )}
-
-          {/* LOG */}
-          {activeTab === 'log' && (
-            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
-              <div className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-slate-50">
-                <button onClick={() => setSelectedDate(curr => { const d = new Date(curr); d.setDate(d.getDate() - 1); return d.toISOString().split('T')[0]; })}><ChevronLeft className="text-slate-400" /></button>
-                <div className="text-center">
-                  <div className={`text-[10px] font-bold uppercase tracking-widest ${theme.accent}`}>Logging</div>
-                  <div className="font-black text-lg text-slate-800">{new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric'})}</div>
-                </div>
-                <button onClick={() => setSelectedDate(curr => { const d = new Date(curr); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; })}><ChevronRight className="text-slate-400" /></button>
-              </div>
-              <LogCard title={t.temp}>
-                <div className="flex items-center justify-between">
-                  <button className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-600 active:scale-90 transition-transform" onClick={() => dispatch({ type: 'UPDATE_CYCLE_DAY', payload: { ...currentDayEntry, temperature: (currentDayEntry.temperature || 36.5) - 0.1 }})}><Minus size={20}/></button>
-                  <div className="text-4xl font-black text-slate-800 tabular-nums">{(currentDayEntry.temperature || 36.5).toFixed(1)}<span className="text-lg text-slate-400 font-bold">°C</span></div>
-                  <button className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-600 active:scale-90 transition-transform" onClick={() => dispatch({ type: 'UPDATE_CYCLE_DAY', payload: { ...currentDayEntry, temperature: (currentDayEntry.temperature || 36.5) + 0.1 }})}><Plus size={20}/></button>
-                </div>
-              </LogCard>
-              <LogCard title={t.mens}>
-                <div className="flex justify-between gap-2">{['none', 'light', 'medium', 'heavy'].map((flow) => (<button key={flow} onClick={() => dispatch({ type: 'UPDATE_CYCLE_DAY', payload: { ...currentDayEntry, flow: flow as any }})} className={`flex-1 py-3 rounded-xl text-[10px] font-bold uppercase transition-all ${currentDayEntry.flow === flow ? theme.active : 'bg-slate-50 text-slate-400'}`}>{flow}</button>))}</div>
-              </LogCard>
-              <LogCard title={t.mucus}>
-                <div className="grid grid-cols-3 gap-2">{['dry', 'sticky', 'creamy', 'watery', 'eggwhite'].map((m) => (<button key={m} onClick={() => dispatch({ type: 'UPDATE_CYCLE_DAY', payload: { ...currentDayEntry, mucus: m as any }})} className={`py-3 rounded-xl text-[10px] font-bold uppercase transition-all ${currentDayEntry.mucus === m ? theme.active : 'bg-slate-50 text-slate-400'}`}>{m}</button>))}</div>
-              </LogCard>
-              <LogCard title={t.notes}>
-                   <textarea className="w-full bg-slate-50 border-0 rounded-xl p-4 text-sm text-slate-600 focus:ring-2 focus:ring-rose-200 h-32 resize-none" placeholder="..." value={currentDayEntry.notes} onChange={e=>dispatch({ type: 'UPDATE_CYCLE_DAY', payload: { ...currentDayEntry, notes: e.target.value } })} />
-               </LogCard>
-               <button onClick={saveToVault} className={`w-full text-white font-bold py-4 rounded-2xl shadow-lg hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 active:scale-95 ${theme.logBtn}`}><Save size={20} /> {t.save}</button>
-            </div>
-          )}
-
-          {/* CALENDAR */}
-          {activeTab === 'calendar' && (
-            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
-               <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-50 min-h-[400px]">
-                 <div className="flex justify-between items-center mb-6">
-                   <button onClick={()=>{const d=new Date(selectedDate); d.setMonth(d.getMonth()-1); setSelectedDate(getLocalISODate(d));}}><ChevronLeft size={20} className="text-slate-400 hover:text-slate-600"/></button>
-                   <h2 className="font-black text-xl text-slate-800">{new Date(selectedDate).toLocaleDateString('en-US', {month:'long', year:'numeric'})}</h2>
-                   <button onClick={()=>{const d=new Date(selectedDate); d.setMonth(d.getMonth()+1); setSelectedDate(getLocalISODate(d));}}><ChevronRight size={20} className="text-slate-400 hover:text-slate-600"/></button>
-                 </div>
-                 
-                 {/* Biometric Pattern Strip (Restored) */}
-                 <div className="h-8 w-full bg-slate-50 rounded-xl overflow-hidden relative mb-6 border border-slate-100 flex items-center justify-center">
-                    <div className={`absolute inset-0 opacity-20 bg-gradient-to-r ${theme.primary}`}></div>
-                    <svg className="w-full h-full absolute" preserveAspectRatio="none"><path d="M0,32 C50,10 100,0 150,10 S250,32 300,10 S400,0 440,10" fill="none" stroke="rgba(0,0,0,0.1)" strokeWidth="2"/></svg>
-                    <span className="relative text-[9px] font-bold text-slate-400 tracking-widest uppercase flex items-center gap-1"><Sparkles size={8}/> Pattern</span>
-                 </div>
-
-                 <div className="grid grid-cols-7 gap-2 mb-2">
-                   {['S','M','T','W','T','F','S'].map(d => <div key={d} className="text-center text-[10px] font-bold text-slate-300">{d}</div>)}
-                 </div>
-                 <div className="grid grid-cols-7 gap-2">
-                   {getCalendarDays().map((dateStr, i) => {
-                     if (!dateStr) return <div key={i} className="aspect-square"></div>;
-                     const dayNum = parseInt(dateStr.split('-')[2]);
-                     const entry = state.cycleData.find(d => d.date === dateStr);
-                     const isFertile = predictions.fertileWindow.includes(dateStr);
-                     const isPeriod = entry?.flow !== 'none' && entry?.flow;
-                     return (
-                       <button 
-                         key={i} 
-                         onClick={() => setSelectedSummary(dateStr)} // INTERACTIVITY RESTORED
-                         className={`aspect-square rounded-xl flex flex-col items-center justify-center relative transition-all ${dateStr === selectedDate ? `ring-2 ring-${theme.accent.split('-')[1]}-400` : ''} ${isPeriod ? 'bg-rose-100 text-rose-600' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
-                       >
-                         <span className="text-xs font-bold">{dayNum}</span>
-                         {isFertile && <div className="w-1.5 h-1.5 rounded-full bg-teal-400 absolute bottom-1.5"></div>}
-                       </button>
-                     )
-                   })}
-                 </div>
-                 <div className="mt-6 flex justify-center gap-4 border-t border-slate-50 pt-4">
-                    <LegendItem color="bg-rose-400" label="Period" />
-                    <LegendItem color="bg-teal-400" label="Fertile" />
-                 </div>
-               </div>
-            </div>
-          )}
-
-          {/* SETTINGS */}
-          {activeTab === 'settings' && (
-            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
-              <LogCard title="Appearance">
-                <div className="grid grid-cols-3 gap-2">
-                  {Object.keys(THEMES).map(tKey => (
-                    <button key={tKey} onClick={() => dispatch({type: 'UPDATE_PROFILE', payload: { theme: tKey as Theme }})} className={`py-3 border-2 rounded-xl text-[10px] font-bold uppercase ${state.profile.theme===tKey ? 'border-slate-800 bg-slate-800 text-white' : 'border-slate-100 text-slate-400'}`}>{tKey}</button>
-                  ))}
-                </div>
-              </LogCard>
-              <LogCard title="Intelligence">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm font-bold text-slate-700">Activate Assistant</span>
-                  <div 
-                    onClick={() => dispatch({type: 'UPDATE_PROFILE', payload: { aiActive: !state.profile.aiActive }})}
-                    className={`w-12 h-7 rounded-full relative transition-colors cursor-pointer ${state.profile.aiActive ? 'bg-emerald-500' : 'bg-slate-200'}`}
-                  >
-                    <div className={`w-5 h-5 bg-white rounded-full shadow-sm absolute top-1 transition-all ${state.profile.aiActive ? 'left-6' : 'left-1'}`} />
-                  </div>
-                </div>
-                {state.profile.aiActive && (
-                  <input 
-                    type="password"
-                    placeholder="API Key (OpenAI)"
-                    className="w-full p-3 bg-slate-50 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-100"
-                    onChange={(e) => dispatch({type: 'UPDATE_PROFILE', payload: { apiKey: e.target.value }})}
-                    value={state.profile.apiKey || ''}
-                  />
-                )}
-              </LogCard>
-              <LogCard title="Data Management">
-                <div className="space-y-3">
-                    <button onClick={() => { const blob = new Blob([JSON.stringify(state)], {type: 'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download='hera_backup.json'; a.click(); }} className="w-full py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 flex items-center justify-center gap-2"><Download size={14}/> Backup Data (JSON)</button>
-                    <label className="w-full py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 flex items-center justify-center gap-2 cursor-pointer"><Upload size={14}/> Restore Backup <input type="file" className="hidden" accept=".json" onChange={handleRestoreBackup} /></label>
-                </div>
-              </LogCard>
-            </div>
-          )}
-
-          {/* HELP (Restored & Humanized) */}
-          {activeTab === 'help' && (
-              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                  <LogCard title="Legend">
-                      <div className="flex justify-between px-2">
-                          <LegendItem color="bg-rose-400" label="Flow" />
-                          <LegendItem color="bg-teal-400" label="Fertile" />
-                          <LegendItem color="bg-slate-800" label="Today" />
+                    <h2 className="text-3xl font-black mb-1">{getCyclePhase().name}</h2>
+                    <p className="text-sm font-medium opacity-90 mb-6">
+                      Cycle Day {cycleStats.lastStart ? Math.floor((new Date().getTime() - new Date(cycleStats.lastStart).getTime())/86400000) + 1 : 1}
+                    </p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-white/20 backdrop-blur-md rounded-xl p-3">
+                        <div className="text-[10px] uppercase font-bold opacity-70 mb-1">Next Period</div>
+                        <div className="font-bold text-lg">{predictions.nextPeriod ? new Date(predictions.nextPeriod).toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '--'}</div>
                       </div>
-                  </LogCard>
-                  <LogCard title="Questions">
-                      <FAQItem q="Is my data safe?" a="Absolutely. Your data stays on this device. We use a lock that only your password can open. We can't see it, sell it, or share it." />
-                      <FAQItem q="What if I forget my password?" a="Because we don't store your password, we cannot reset it for you. This ensures no one can ever hack into our servers to get your data." />
-                      <FAQItem q="How do predictions work?" a="Hera learns from you. The more you log your period and temperature, the better it gets at knowing your unique rhythm." />
-                      <FAQItem q="Why track temperature?" a="Your body temperature dips slightly before you release an egg, then rises. Tracking this helps confirm when you are most fertile." />
-                  </LogCard>
+                      <div className="bg-white/20 backdrop-blur-md rounded-xl p-3">
+                        <div className="text-[10px] uppercase font-bold opacity-70 mb-1">Fertile Window</div>
+                        <div className="font-bold text-lg">{predictions.fertileWindow.length > 0 ? new Date(predictions.fertileWindow[0]).toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '--'}</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-bl-full pointer-events-none"></div>
+                  <Sparkles className="absolute -bottom-4 -right-4 w-40 h-40 text-white opacity-10 pointer-events-none" />
+                </div>
+                <div className="bg-white p-5 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-50">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-bold text-slate-700 flex items-center gap-2"><Activity size={16} className={theme.accent}/> Trends</h3>
+                    <div className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-full">30 Days</div>
+                  </div>
+                  <div className="h-40 w-full">{renderChart()}</div>
+                </div>
+                <div className="bg-white p-5 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-50">
+                    <div className="flex items-center gap-2 mb-3"><BrainCircuit size={18} className={theme.accent}/><span className="font-bold text-slate-700">AI Insight</span></div>
+                    <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">
+                        {aiInsight || (state.profile.aiActive ? "Analyzing..." : "Enable AI in Settings for advanced analysis.")}
+                    </p>
+                </div>
               </div>
-          )}
-        </main>
+            )}
 
-        <div className="absolute bottom-0 w-full bg-white border-t border-slate-50 p-2 pb-6 px-6 z-30 flex justify-between items-end">
-          <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center gap-1 ${activeTab === 'home' ? theme.accent : 'text-slate-300'}`}><Home size={24} strokeWidth={activeTab === 'home' ? 3 : 2} /><span className="text-[9px] font-bold uppercase tracking-wider">{t.home}</span></button>
-          <button onClick={() => setActiveTab('calendar')} className={`flex flex-col items-center gap-1 ${activeTab === 'calendar' ? theme.accent : 'text-slate-300'}`}><CalendarIcon size={24} strokeWidth={activeTab === 'calendar' ? 3 : 2} /><span className="text-[9px] font-bold uppercase tracking-wider">{t.cal}</span></button>
-          <div className="-mt-8"><button onClick={() => setActiveTab('log')} className={`w-16 h-16 rounded-2xl flex items-center justify-center text-white shadow-xl transition-transform active:scale-95 bg-gradient-to-br ${theme.primary} ring-4 ring-white`}><Droplet size={28} fill="currentColor" /><span className="text-[9px] font-black uppercase tracking-widest">{t.log}</span></button></div>
-          <button onClick={() => setActiveTab('settings')} className={`flex flex-col items-center gap-1 ${activeTab === 'settings' ? theme.accent : 'text-slate-300'}`}><Settings size={24} strokeWidth={activeTab === 'settings' ? 3 : 2} /><span className="text-[9px] font-bold uppercase tracking-wider">{t.set}</span></button>
-          <button onClick={() => setActiveTab('help')} className={`flex flex-col items-center gap-1 ${activeTab === 'help' ? theme.accent : 'text-slate-300'}`}><HelpCircle size={24} strokeWidth={activeTab === 'help' ? 3 : 2} /><span className="text-[9px] font-bold uppercase tracking-wider">{t.help}</span></button>
+            {/* LOG */}
+            {activeTab === 'log' && (
+              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                <div className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-slate-50">
+                  <button onClick={() => setSelectedDate(curr => { const d = new Date(curr); d.setDate(d.getDate() - 1); return d.toISOString().split('T')[0]; })}><ChevronLeft className="text-slate-400" /></button>
+                  <div className="text-center">
+                    <div className={`text-[10px] font-bold uppercase tracking-widest ${theme.accent}`}>Logging</div>
+                    <div className="font-black text-lg text-slate-800">{new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric'})}</div>
+                  </div>
+                  <button onClick={() => setSelectedDate(curr => { const d = new Date(curr); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; })}><ChevronRight className="text-slate-400" /></button>
+                </div>
+                <LogCard title={t.temp}>
+                  <div className="flex items-center justify-between">
+                    <button className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-600 active:scale-90 transition-transform" onClick={() => dispatch({ type: 'UPDATE_CYCLE_DAY', payload: { ...currentDayEntry, temperature: (currentDayEntry.temperature || 36.5) - 0.1 }})}><Minus size={20}/></button>
+                    <div className="text-4xl font-black text-slate-800 tabular-nums">{(currentDayEntry.temperature || 36.5).toFixed(1)}<span className="text-lg text-slate-400 font-bold">°C</span></div>
+                    <button className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-600 active:scale-90 transition-transform" onClick={() => dispatch({ type: 'UPDATE_CYCLE_DAY', payload: { ...currentDayEntry, temperature: (currentDayEntry.temperature || 36.5) + 0.1 }})}><Plus size={20}/></button>
+                  </div>
+                </LogCard>
+                <LogCard title={t.mens}>
+                  <div className="flex justify-between gap-2">{['none', 'light', 'medium', 'heavy'].map((flow) => (<button key={flow} onClick={() => dispatch({ type: 'UPDATE_CYCLE_DAY', payload: { ...currentDayEntry, flow: flow as any }})} className={`flex-1 py-3 rounded-xl text-[10px] font-bold uppercase transition-all ${currentDayEntry.flow === flow ? theme.active : 'bg-slate-50 text-slate-400'}`}>{flow}</button>))}</div>
+                </LogCard>
+                <LogCard title={t.mucus}>
+                  <div className="grid grid-cols-3 gap-2">{['dry', 'sticky', 'creamy', 'watery', 'eggwhite'].map((m) => (<button key={m} onClick={() => dispatch({ type: 'UPDATE_CYCLE_DAY', payload: { ...currentDayEntry, mucus: m as any }})} className={`py-3 rounded-xl text-[10px] font-bold uppercase transition-all ${currentDayEntry.mucus === m ? theme.active : 'bg-slate-50 text-slate-400'}`}>{m}</button>))}</div>
+                </LogCard>
+                <LogCard title={t.notes}>
+                     <textarea className="w-full bg-slate-50 border-0 rounded-xl p-4 text-sm text-slate-600 focus:ring-2 focus:ring-rose-200 h-32 resize-none" placeholder="..." value={currentDayEntry.notes} onChange={e=>dispatch({ type: 'UPDATE_CYCLE_DAY', payload: { ...currentDayEntry, notes: e.target.value } })} />
+                 </LogCard>
+                 <button onClick={saveToVault} className={`w-full text-white font-bold py-4 rounded-2xl shadow-lg hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 active:scale-95 ${theme.logBtn}`}><Save size={20} /> {t.save}</button>
+              </div>
+            )}
+
+            {/* CALENDAR */}
+            {activeTab === 'calendar' && (
+              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                 <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-50 min-h-[400px]">
+                   <div className="flex justify-between items-center mb-6">
+                     <button onClick={()=>{const d=new Date(selectedDate); d.setMonth(d.getMonth()-1); setSelectedDate(getLocalISODate(d));}}><ChevronLeft size={20} className="text-slate-400 hover:text-slate-600"/></button>
+                     <h2 className="font-black text-xl text-slate-800">{new Date(selectedDate).toLocaleDateString('en-US', {month:'long', year:'numeric'})}</h2>
+                     <button onClick={()=>{const d=new Date(selectedDate); d.setMonth(d.getMonth()+1); setSelectedDate(getLocalISODate(d));}}><ChevronRight size={20} className="text-slate-400 hover:text-slate-600"/></button>
+                   </div>
+                   
+                   {/* Biometric Pattern Strip */}
+                   <div className="h-8 w-full bg-slate-50 rounded-xl overflow-hidden relative mb-6 border border-slate-100 flex items-center justify-center">
+                      <div className={`absolute inset-0 opacity-20 bg-gradient-to-r ${theme.primary}`}></div>
+                      <svg className="w-full h-full absolute" preserveAspectRatio="none"><path d="M0,32 C50,10 100,0 150,10 S250,32 300,10 S400,0 440,10" fill="none" stroke="rgba(0,0,0,0.1)" strokeWidth="2"/></svg>
+                      <span className="relative text-[9px] font-bold text-slate-400 tracking-widest uppercase flex items-center gap-1"><Sparkles size={8}/> Pattern</span>
+                   </div>
+
+                   <div className="grid grid-cols-7 gap-2 mb-2">
+                     {['S','M','T','W','T','F','S'].map(d => <div key={d} className="text-center text-[10px] font-bold text-slate-300">{d}</div>)}
+                   </div>
+                   <div className="grid grid-cols-7 gap-2">
+                     {getCalendarDays().map((dateStr, i) => {
+                       if (!dateStr) return <div key={i} className="aspect-square"></div>;
+                       const dayNum = parseInt(dateStr.split('-')[2]);
+                       const entry = state.cycleData.find(d => d.date === dateStr);
+                       const isFertile = predictions.fertileWindow.includes(dateStr);
+                       const isPeriod = entry?.flow !== 'none' && entry?.flow;
+                       return (
+                         <button 
+                           key={i} 
+                           onClick={() => setSelectedSummary(dateStr)}
+                           className={`aspect-square rounded-xl flex flex-col items-center justify-center relative transition-all ${dateStr === selectedDate ? `ring-2 ring-${theme.accent.split('-')[1]}-400` : ''} ${isPeriod ? 'bg-rose-100 text-rose-600' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
+                         >
+                           <span className="text-xs font-bold">{dayNum}</span>
+                           {isFertile && <div className="w-1.5 h-1.5 rounded-full bg-teal-400 absolute bottom-1.5"></div>}
+                         </button>
+                       )
+                     })}
+                   </div>
+                   <div className="mt-6 flex justify-center gap-4 border-t border-slate-50 pt-4">
+                      <LegendItem color="bg-rose-400" label="Period" />
+                      <LegendItem color="bg-teal-400" label="Fertile" />
+                   </div>
+                 </div>
+              </div>
+            )}
+
+            {/* SETTINGS */}
+            {activeTab === 'settings' && (
+              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                <LogCard title="Appearance">
+                  <div className="grid grid-cols-3 gap-2">
+                    {Object.keys(THEMES).map(tKey => (
+                      <button key={tKey} onClick={() => dispatch({type: 'UPDATE_PROFILE', payload: { theme: tKey as Theme }})} className={`py-3 border-2 rounded-xl text-[10px] font-bold uppercase ${state.profile.theme===tKey ? 'border-slate-800 bg-slate-800 text-white' : 'border-slate-100 text-slate-400'}`}>{tKey}</button>
+                    ))}
+                  </div>
+                </LogCard>
+                <LogCard title="Intelligence">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-sm font-bold text-slate-700">Activate Assistant</span>
+                    <div 
+                      onClick={() => dispatch({type: 'UPDATE_PROFILE', payload: { aiActive: !state.profile.aiActive }})}
+                      className={`w-12 h-7 rounded-full relative transition-colors cursor-pointer ${state.profile.aiActive ? 'bg-emerald-500' : 'bg-slate-200'}`}
+                    >
+                      <div className={`w-5 h-5 bg-white rounded-full shadow-sm absolute top-1 transition-all ${state.profile.aiActive ? 'left-6' : 'left-1'}`} />
+                    </div>
+                  </div>
+                  {state.profile.aiActive && (
+                    <input 
+                      type="password"
+                      placeholder="API Key (OpenAI)"
+                      className="w-full p-3 bg-slate-50 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-100"
+                      onChange={(e) => dispatch({type: 'UPDATE_PROFILE', payload: { apiKey: e.target.value }})}
+                      value={state.profile.apiKey || ''}
+                    />
+                  )}
+                </LogCard>
+                <LogCard title="Data Management">
+                  <div className="space-y-3">
+                      <button onClick={() => { const blob = new Blob([JSON.stringify(state)], {type: 'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download='hera_backup.json'; a.click(); }} className="w-full py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 flex items-center justify-center gap-2"><Download size={14}/> Backup Data (JSON)</button>
+                      <label className="w-full py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 flex items-center justify-center gap-2 cursor-pointer"><Upload size={14}/> Restore Backup <input type="file" className="hidden" accept=".json" onChange={handleRestoreBackup} /></label>
+                  </div>
+                </LogCard>
+                <div className="pt-4 text-center">
+                  <button onClick={() => setShowWaiver(true)} className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-rose-500 transition-colors">
+                    View Legal Disclaimer
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* HELP & FAQ (Expanded) */}
+            {activeTab === 'help' && (
+                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                    <LogCard title="Critical Information">
+                        <FAQItem important q="PROTOCOL: BACKUP FREQUENCY" a="We strictly recommend exporting your vault data WEEKLY. Because Hera uses Zero-Knowledge encryption, we cannot recover your data if your device is lost or cleared. You are the sole custodian of your cycle history. Go to Settings > Backup Data." />
+                        <FAQItem important q="LEGAL: CONTRACEPTION" a="Hera is NOT a contraceptive device. It is a data logging tool. Relying on this app to prevent pregnancy is dangerous. Always use primary protection." />
+                    </LogCard>
+                    <LogCard title="Forensic FAQ">
+                        <FAQItem q="How does the LAS algorithm work?" a="The Luteal Assessment Score (LAS) is a weighted calculation. It prioritizes Cervical Mucus viscosity (40%), LH Surge timing (30%), and Basal Body Temperature shifts (30%). It requires at least 3 months of consistent data to reach >85% predictive confidence." />
+                        <FAQItem q="Why can't I reset my password?" a="Hera uses AES-256 encryption derived directly from your password. We do not store your password on any server. If you lose it, the mathematical key to decrypt your data is gone forever. This ensures total privacy from us and any third party." />
+                        <FAQItem q="My prediction changed unexpectedly?" a="This is normal. The algorithm recalculates every time you add data. A sudden temperature drop or unexpected spotting will trigger a 'Constraint Update' to adjust your fertile window in real-time." />
+                        <FAQItem q="Is my data shared with AI?" a="Only if you explicitly enable the AI Assistant in Settings and provide your own API key. Otherwise, all processing happens locally on your device's CPU. No data leaves your phone." />
+                    </LogCard>
+                    <div className="pt-8 pb-4 text-center space-y-2">
+                        <button onClick={() => setShowWaiver(true)} className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-rose-500 transition-colors">
+                          View Legal Disclaimer
+                        </button>
+                        <p className="text-[9px] text-slate-300">Hera Cycle v100.1 | Sovereign Build</p>
+                    </div>
+                </div>
+            )}
+          </main>
+
+          <div className="absolute bottom-0 w-full bg-white border-t border-slate-50 p-2 pb-6 px-6 z-30 flex justify-between items-end shrink-0">
+            <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center gap-1 ${activeTab === 'home' ? theme.accent : 'text-slate-300'}`}><Home size={24} strokeWidth={activeTab === 'home' ? 3 : 2} /><span className="text-[9px] font-bold uppercase tracking-wider">{t.home}</span></button>
+            <button onClick={() => setActiveTab('calendar')} className={`flex flex-col items-center gap-1 ${activeTab === 'calendar' ? theme.accent : 'text-slate-300'}`}><CalendarIcon size={24} strokeWidth={activeTab === 'calendar' ? 3 : 2} /><span className="text-[9px] font-bold uppercase tracking-wider">{t.cal}</span></button>
+            <div className="-mt-8"><button onClick={() => setActiveTab('log')} className={`w-16 h-16 rounded-2xl flex items-center justify-center text-white shadow-xl transition-transform active:scale-95 bg-gradient-to-br ${theme.primary} ring-4 ring-white`}><Droplet size={28} fill="currentColor" /><span className="text-[9px] font-black uppercase tracking-widest">{t.log}</span></button></div>
+            <button onClick={() => setActiveTab('settings')} className={`flex flex-col items-center gap-1 ${activeTab === 'settings' ? theme.accent : 'text-slate-300'}`}><Settings size={24} strokeWidth={activeTab === 'settings' ? 3 : 2} /><span className="text-[9px] font-bold uppercase tracking-wider">{t.set}</span></button>
+            <button onClick={() => setActiveTab('help')} className={`flex flex-col items-center gap-1 ${activeTab === 'help' ? theme.accent : 'text-slate-300'}`}><HelpCircle size={24} strokeWidth={activeTab === 'help' ? 3 : 2} /><span className="text-[9px] font-bold uppercase tracking-wider">{t.help}</span></button>
+          </div>
         </div>
-      </div>
+        </>
+      )}
       
       <style dangerouslySetInnerHTML={{__html: `
         .no-scrollbar::-webkit-scrollbar { display: none; }

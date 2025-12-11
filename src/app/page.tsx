@@ -19,10 +19,10 @@ import {
 } from 'lucide-react';
 
 /**
- * HERA CYCLE - v100.2 (Sovereign Edition - Security Visuals Patched)
- * - Implemented ShieldAlert for Liability & Critical Warnings.
- * - Maintained all FAQ content & Unit logic.
- * - Strict Mobile Viewport (100dvh).
+ * HERA CYCLE - v100.3 (Sovereign Edition - Unit Restoration Patch)
+ * - CRITICAL FIX: Added Unit Toggle (C/F) to Settings.
+ * - CRITICAL FIX: Removed hardcoded "°C" in Log View; now dynamic.
+ * - UI: Maintained ShieldAlert and strict layout.
  */
 
 // --- 1. DOMAIN MODELS ---
@@ -351,7 +351,6 @@ const FAQItem = ({ q, a, important = false }: any) => {
         <div className={`border-b border-slate-100 last:border-0 bg-white ${important ? 'bg-rose-50/50' : ''}`}>
             <button onClick={()=>setIsOpen(!isOpen)} className="w-full py-4 flex justify-between items-center text-left hover:bg-slate-50 transition-colors px-2 rounded-xl focus:outline-none">
                 <span className={`font-bold text-xs pr-4 ${important ? 'text-rose-700' : 'text-slate-700'}`}>
-                  {/* REPLACED AlertCircle with ShieldAlert for Critical Items */}
                   {important && <ShieldAlert size={12} className="inline mr-2 -mt-0.5" />}
                   {q}
                 </span>
@@ -399,7 +398,6 @@ const LiabilityModal = ({ onClose }: { onClose: () => void }) => (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6 animate-in fade-in zoom-in">
         <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden flex flex-col max-h-[80vh]">
             <div className="p-6 bg-rose-50 border-b border-rose-100 text-center">
-                {/* REPLACED AlertTriangle with ShieldAlert for Disclaimer */}
                 <ShieldAlert size={32} className="text-rose-500 mx-auto mb-2" />
                 <h2 className="text-lg font-black text-slate-800">Legal Disclaimer</h2>
             </div>
@@ -804,7 +802,7 @@ export default function HeraApp() {
                 <LogCard title={t.temp}>
                   <div className="flex items-center justify-between">
                     <button className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-600 active:scale-90 transition-transform" onClick={() => dispatch({ type: 'UPDATE_CYCLE_DAY', payload: { ...currentDayEntry, temperature: (currentDayEntry.temperature || 36.5) - 0.1 }})}><Minus size={20}/></button>
-                    <div className="text-4xl font-black text-slate-800 tabular-nums">{(currentDayEntry.temperature || 36.5).toFixed(1)}<span className="text-lg text-slate-400 font-bold">°C</span></div>
+                    <div className="text-4xl font-black text-slate-800 tabular-nums">{(currentDayEntry.temperature || 36.5).toFixed(1)}<span className="text-lg text-slate-400 font-bold">°{state.profile.unit}</span></div>
                     <button className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-600 active:scale-90 transition-transform" onClick={() => dispatch({ type: 'UPDATE_CYCLE_DAY', payload: { ...currentDayEntry, temperature: (currentDayEntry.temperature || 36.5) + 0.1 }})}><Plus size={20}/></button>
                   </div>
                 </LogCard>
@@ -878,6 +876,23 @@ export default function HeraApp() {
                     ))}
                   </div>
                 </LogCard>
+                {/* NEW PREFERENCES SECTION */}
+                <LogCard title="Preferences">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-sm font-bold text-slate-700">Temperature Unit</span>
+                    <div className="flex bg-slate-100 rounded-lg p-1">
+                      {['C', 'F'].map((u) => (
+                        <button 
+                          key={u} 
+                          onClick={() => dispatch({type: 'UPDATE_PROFILE', payload: { unit: u as Unit }})}
+                          className={`px-4 py-1 rounded-md text-xs font-bold transition-all ${state.profile.unit === u ? 'bg-white shadow-sm text-slate-900' : 'text-slate-400'}`}
+                        >
+                          °{u}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </LogCard>
                 <LogCard title="Intelligence">
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-sm font-bold text-slate-700">Activate Assistant</span>
@@ -916,7 +931,6 @@ export default function HeraApp() {
             {activeTab === 'help' && (
                 <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
                     <LogCard title="Critical Information">
-                        {/* REPLACED: Use ShieldAlert for critical warnings */}
                         <FAQItem important q="PROTOCOL: BACKUP FREQUENCY" a="We strictly recommend exporting your vault data WEEKLY. Because Hera uses Zero-Knowledge encryption, we cannot recover your data if your device is lost or cleared. You are the sole custodian of your cycle history. Go to Settings > Backup Data." />
                         <FAQItem important q="LEGAL: CONTRACEPTION" a="Hera is NOT a contraceptive device. It is a data logging tool. Relying on this app to prevent pregnancy is dangerous. Always use primary protection." />
                     </LogCard>
@@ -930,7 +944,7 @@ export default function HeraApp() {
                         <button onClick={() => setShowWaiver(true)} className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-rose-500 transition-colors">
                           View Legal Disclaimer
                         </button>
-                        <p className="text-[9px] text-slate-300">Hera Cycle v100.2 | Sovereign Build</p>
+                        <p className="text-[9px] text-slate-300">Hera Cycle v100.3 | Sovereign Build</p>
                     </div>
                 </div>
             )}

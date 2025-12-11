@@ -19,8 +19,9 @@ import {
 } from 'lucide-react';
 
 /**
- * HERA CYCLE - v98.1 (Build Fix)
- * - Fixed 'confirm' variable shadowing in AuthScreen
+ * HERA CYCLE - v98.3 (Build Fix & Type Consistency)
+ * - Fixed import structure error in src/app/page.tsx
+ * - Fixed variable shadowing: confirm() -> window.confirm()
  * - Preserved Strict Zero-Knowledge Security
  * - Preserved Cycle Algorithms & UI
  */
@@ -811,6 +812,3 @@ export default function HeraApp() {
     </div>
   );
 }
-
-
-

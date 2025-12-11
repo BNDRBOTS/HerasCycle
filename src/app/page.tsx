@@ -15,14 +15,15 @@ import {
   Calendar as CalendarIcon, Thermometer, Activity, ChevronLeft, 
   ChevronRight, Droplet, Lock, AlertCircle, Settings, Check, 
   Sparkles, Save, Download, Upload, Home, HelpCircle, 
-  FileText, Minus, Plus, X, User, AlertTriangle, ChevronDown, ChevronUp, BrainCircuit, ShieldAlert
+  FileText, Minus, Plus, X, User, AlertTriangle, ChevronDown, ChevronUp, BrainCircuit, ShieldAlert,
+  Loader2
 } from 'lucide-react';
 
 /**
- * HERA CYCLE - v100.3 (Sovereign Edition - Unit Restoration Patch)
- * - CRITICAL FIX: Added Unit Toggle (C/F) to Settings.
- * - CRITICAL FIX: Removed hardcoded "°C" in Log View; now dynamic.
- * - UI: Maintained ShieldAlert and strict layout.
+ * HERA CYCLE - v100.4 (Sovereign Edition - Logic Hardening)
+ * - AUTH FIX: Added "Restore Vault" directly to the Setup Screen. No more creating fake accounts to restore.
+ * - AI FIX: Removed mock string. Implemented ACTUAL OpenAI Fetch logic (client-side).
+ * - BACKUP SECURITY: Added warning to export.
  */
 
 // --- 1. DOMAIN MODELS ---
@@ -413,7 +414,7 @@ const LiabilityModal = ({ onClose }: { onClose: () => void }) => (
     </div>
 );
 
-const AuthScreen = ({ mode, onSubmit, error, onShowWaiver }: any) => {
+const AuthScreen = ({ mode, onSubmit, error, onShowWaiver, onRestore }: any) => {
   const [pass, setPass] = useState('');
   const [confirmPassword, setConfirmPassword] = useState(''); 
   const [agreed, setAgreed] = useState(false);
@@ -488,6 +489,16 @@ const AuthScreen = ({ mode, onSubmit, error, onShowWaiver }: any) => {
             {mode === 'setup' ? 'Create Secure Vault' : 'Unlock Journal'}
           </button>
           
+          {mode === 'setup' && (
+            <div className="text-center pt-2">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-slate-600 cursor-pointer flex items-center justify-center gap-2">
+                <Upload size={12} />
+                Restore Existing Vault
+                <input type="file" className="hidden" accept=".json" onChange={onRestore} />
+              </label>
+            </div>
+          )}
+
           {mode === 'login' && (
             <button 
               onClick={() => { 
@@ -522,7 +533,10 @@ export default function HeraApp() {
   const [isMounted, setIsMounted] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle'|'saving'|'saved'>('idle');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // AI State
   const [aiInsight, setAiInsight] = useState<string | null>(null);
+  const [isThinking, setIsThinking] = useState(false);
 
   const passwordRef = useRef<string | null>(null);
   const idleTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -602,13 +616,20 @@ export default function HeraApp() {
     }
   };
 
+  // Restore logic for BOTH Auth and Settings
   const handleRestoreBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
       const content = ev.target?.result as string;
-      try { JSON.parse(content); if(window.confirm("This will overwrite your current vault. Continue?")) { localStorage.setItem('hera_vault', content); window.location.reload(); } } catch { alert("Invalid Backup File"); }
+      try { 
+        JSON.parse(content); // Validate JSON format
+        if(window.confirm("WARNING: This will overwrite the current vault. Ensure you have the password for this backup file if you previously exported it encrypted, otherwise proceed.")) { 
+          localStorage.setItem('hera_vault', content); 
+          window.location.reload(); 
+        } 
+      } catch { alert("Invalid Backup File"); }
     };
     reader.readAsText(file);
   };
@@ -633,6 +654,45 @@ export default function HeraApp() {
     return { name: 'Follicular Phase', color: 'text-blue-500' };
   };
 
+  // AI REAL LOGIC
+  useEffect(() => {
+    const fetchAI = async () => {
+      if (!state.profile.aiActive || !state.profile.apiKey) return;
+      
+      setIsThinking(true);
+      try {
+        const recentData = state.cycleData.slice(-14);
+        const prompt = `Analyze this cycle data: ${JSON.stringify(recentData)}. Current phase: ${getCyclePhase().name}. Brief forensic health summary.`;
+        
+        const res = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${state.profile.apiKey}`
+          },
+          body: JSON.stringify({
+            model: "gpt-3.5-turbo",
+            messages: [{ role: "user", content: prompt }],
+            max_tokens: 60
+          })
+        });
+
+        if (!res.ok) throw new Error("AI Error");
+        const data = await res.json();
+        setAiInsight(data.choices[0].message.content);
+      } catch (e) {
+        setAiInsight("AI Connection Failed. Check Key.");
+      } finally {
+        setIsThinking(false);
+      }
+    };
+
+    if (activeTab === 'home' && state.profile.aiActive) {
+      // Debounce slightly or just run once per mount/state change
+      fetchAI();
+    }
+  }, [activeTab, state.profile.aiActive, state.profile.apiKey]); // Reduced dependency churn
+
   // Calendar Logic
   const getCalendarDays = () => {
     const viewDate = new Date(selectedDate);
@@ -648,17 +708,6 @@ export default function HeraApp() {
 
   const theme = THEMES[state.profile.theme];
   const t = DICTIONARY[state.profile.lang];
-
-  useEffect(() => {
-    if (activeTab === 'home') {
-        const { name } = getCyclePhase();
-        if (state.profile.apiKey) {
-            setAiInsight(`[FORENSIC] Phase: ${name}. Biomarkers indicate stable progression. No anomalies.`);
-        } else {
-            setAiInsight(`Based on your data, you are currently in the ${name}. Continue logging for better accuracy.`);
-        }
-    }
-  }, [activeTab, state.cycleData]);
 
   const renderChart = () => {
     if (!isMounted) return null;
@@ -693,7 +742,15 @@ export default function HeraApp() {
       {/* Global Waiver Modal */}
       {showWaiver && <LiabilityModal onClose={() => setShowWaiver(false)} />}
 
-      {status === 'auth' && <AuthScreen mode={authMode} onSubmit={handleAuth} error={authError} onShowWaiver={() => setShowWaiver(true)} />}
+      {status === 'auth' && (
+        <AuthScreen 
+          mode={authMode} 
+          onSubmit={handleAuth} 
+          error={authError} 
+          onShowWaiver={() => setShowWaiver(true)} 
+          onRestore={handleRestoreBackup}
+        />
+      )}
 
       {status === 'app' && (
         <>
@@ -782,7 +839,11 @@ export default function HeraApp() {
                 <div className="bg-white p-5 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-50">
                     <div className="flex items-center gap-2 mb-3"><BrainCircuit size={18} className={theme.accent}/><span className="font-bold text-slate-700">AI Insight</span></div>
                     <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">
-                        {aiInsight || (state.profile.aiActive ? "Analyzing..." : "Enable AI in Settings for advanced analysis.")}
+                        {isThinking ? (
+                          <span className="flex items-center gap-2 animate-pulse text-slate-400"><Loader2 size={14} className="animate-spin"/> Analysis in progress...</span>
+                        ) : (
+                          aiInsight || (state.profile.aiActive ? "Waiting for data..." : "Enable AI in Settings for advanced analysis.")
+                        )}
                     </p>
                 </div>
               </div>
@@ -916,6 +977,7 @@ export default function HeraApp() {
                 <LogCard title="Data Management">
                   <div className="space-y-3">
                       <button onClick={() => { const blob = new Blob([JSON.stringify(state)], {type: 'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download='hera_backup.json'; a.click(); }} className="w-full py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 flex items-center justify-center gap-2"><Download size={14}/> Backup Data (JSON)</button>
+                      <div className="px-3 text-[10px] text-rose-500 font-bold text-center">⚠️ Warning: Backup file is NOT encrypted. Store safely.</div>
                       <label className="w-full py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 flex items-center justify-center gap-2 cursor-pointer"><Upload size={14}/> Restore Backup <input type="file" className="hidden" accept=".json" onChange={handleRestoreBackup} /></label>
                   </div>
                 </LogCard>
@@ -944,7 +1006,7 @@ export default function HeraApp() {
                         <button onClick={() => setShowWaiver(true)} className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-rose-500 transition-colors">
                           View Legal Disclaimer
                         </button>
-                        <p className="text-[9px] text-slate-300">Hera Cycle v100.3 | Sovereign Build</p>
+                        <p className="text-[9px] text-slate-300">Hera Cycle v100.4 | Sovereign Build</p>
                     </div>
                 </div>
             )}
